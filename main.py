@@ -3,13 +3,11 @@ import pyray as pr
 import asyncio
 import platform
 import input_config as Inputs
-print("putaaaa")
 from animation import *
-print("putaaaa DOS")
 from enum import IntFlag
 from math import sqrt
 
-
+pr.VIOLET = pr.Color(240,180,220,255)
 
 class State(IntFlag):
 
@@ -27,10 +25,10 @@ class Inventory(IntFlag):
 
 class Controller(IntFlag):
 
-    UP = 0
+    UP =    0
     RIGHT = 1
-    DOWN = 2
-    LEFT = 3
+    DOWN =  2
+    LEFT =  3
 
 current_object = Inventory.EMPTY
 
@@ -121,8 +119,19 @@ def draw_rec(w,h,locx,locy):
     pr.draw_rectangle(locx,locy,w,h,pr.SKYBLUE)
 
 
-def draw_sprite(spritesheet,rect,posx,posy):
+def mirror_sprite(controls,mirror):
 
+    if controls & 1<< Controller.RIGHT:
+        return 1
+    elif controls & 1<< Controller.LEFT:
+        return -1
+
+    return mirror
+
+
+
+def draw_sprite(spritesheet,rect,posx,posy):
+    
     pr.draw_texture_pro(spritesheet,
                         rect,
                         pr.Rectangle(posx,posy,16*10,16*10),
@@ -131,18 +140,20 @@ def draw_sprite(spritesheet,rect,posx,posy):
                         pr.WHITE)
     
 
-def animate_sprite(resource,posx,posy):
+def animate_sprite(resource,posx,posy,controls,mirror):
     
+    
+    if resource["counter"] < resource["time"][resource["current_time"]]:
+        resource["counter"] += 1
+    else:
+        resource["counter"] = 0
+        if resource["current_time"] + 1 < len(resource["time"]):
+            resource["current_time"] += 1 
+        else:
+            resource["current_time"] = 0
 
-    if resource["counter"] >= resource["current_time"]:
-        if not resource["current_frame"] + 1 > len(resource["time"]):
-            resource["current_time"] = resource["time"][resource["current_frame"]]
-            resource["current_frame"] += 1
-        
-
-    rect = pr.Rectangle(resource["current_frame"]*16,0,16,16)
-
-    resource["counter"] += 1
+    
+    rect = pr.Rectangle(resource["current_time"]*16,0,16*mirror_sprite(controls,mirror),16)
 
     draw_sprite(resource["spritesheet"],rect,posx,posy)
 
@@ -182,6 +193,7 @@ async def main():
 
     debug = False
     controls = 0b0000   #init controller
+    mirror = 1
     
     player_pos = (100,100)
     player = 0b00000000 #init player
@@ -206,31 +218,36 @@ async def main():
 
     while not pr.window_should_close():
 
+
         #LOGIC:
         debug = debug_toggle(debug)
         controls = player_input(controls)
+        mirror = mirror_sprite(controls,mirror)
         
         player_pos = (player_pos[0]+update_player_pos(controls,player_speed)[0], 
                       player_pos[1]+update_player_pos(controls,player_speed)[1])
 
         player_sprite = select_player_sprite(controls)                  
+        print(mirror)
+
 
         #RENDER:
         pr.begin_drawing()
         pr.clear_background(pr.WHITE)
 
-        animate_sprite(player_sprite,player_pos[0],player_pos[1])
+        animate_sprite(player_sprite,player_pos[0],player_pos[1],controls,mirror)
 
         pr.draw_text("Bit Wizard", 30, 30, 20, pr.VIOLET)
         pr.draw_text(f"Press O for debug data", 30, 50, 20, pr.DARKGREEN)
 
 
         if debug:
-                
-            pr.draw_text(f"Controller bits: {str(bin(controls))}", 190, 230, 20, pr.VIOLET)
-            pr.draw_text(f"Player position: {str(player_pos)}", 190, 260, 20, pr.VIOLET)
-            pr.draw_text(f"Movement vector: {str(update_player_pos(controls,player_speed))}", 190, 290, 20, pr.VIOLET)
-            pr.draw_text(("Current animation: " + player_sprite["id"]), 190, 310, 20, pr.VIOLET)
+            pr.draw_rectangle(80,220,600,200,pr.Color(20,20,20,180))    
+            pr.draw_text(f"Controller bits: {str(bin(controls))}", 90, 230, 20, pr.VIOLET)
+            pr.draw_text(f"Player position: {str(player_pos)}", 90, 260, 20, pr.VIOLET)
+            pr.draw_text(f"Movement vector: {str(update_player_pos(controls,player_speed))}", 90, 290, 20, pr.VIOLET)
+            pr.draw_text(("Current animation: " + player_sprite["id"]), 90, 310, 20, pr.VIOLET)
+            pr.draw_text(("Current frame: " + str(player_sprite["current_time"])), 90, 340, 20, pr.VIOLET)
 
         pr.end_drawing()
         await asyncio.sleep(0)
