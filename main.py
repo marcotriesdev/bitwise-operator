@@ -1,10 +1,13 @@
+
 import pyray as pr
 import asyncio
 import platform
-import  input_config as Inputs
+import input_config as Inputs
+print("putaaaa")
+from animation import *
+print("putaaaa DOS")
 from enum import IntFlag
 from math import sqrt
-
 
 
 
@@ -13,14 +16,14 @@ class State(IntFlag):
     ALIVE  =          0
     WALK   =         1
     ATTK   =        2
-    DEFN   =       3
 
 class Inventory(IntFlag):  
 
-    SWORD  =         4
-    POTION =        5
-    WAND   =       6
-    EMPTY  =      7
+    SHLD   =       3
+    SWORD  =      4
+    POTION =     5
+    WAND   =    6
+    EMPTY  =   7
 
 class Controller(IntFlag):
 
@@ -67,6 +70,7 @@ def player_input(controls):
         controls |= 1 << Controller.LEFT
 
 
+
     #RELEASE KEYS
     if pr.is_key_released(Inputs.move_UP):
         controls &= ~(1<<Controller.UP)
@@ -111,21 +115,84 @@ def debug_toggle(debug):
 
     return debug
 
-async def main():
 
+def draw_rec(w,h,locx,locy):
+
+    pr.draw_rectangle(locx,locy,w,h,pr.SKYBLUE)
+
+
+def draw_sprite(spritesheet,rect,posx,posy):
+
+    pr.draw_texture_pro(spritesheet,
+                        rect,
+                        pr.Rectangle(posx,posy,16*10,16*10),
+                        pr.Vector2(0,0),
+                        0,
+                        pr.WHITE)
+    
+
+def animate_sprite(resource,posx,posy):
+    
+
+    if resource["counter"] >= resource["current_time"]:
+        if not resource["current_frame"] + 1 > len(resource["time"]):
+            resource["current_time"] = resource["time"][resource["current_frame"]]
+            resource["current_frame"] += 1
+        
+
+    rect = pr.Rectangle(resource["current_frame"]*16,0,16,16)
+
+    resource["counter"] += 1
+
+    draw_sprite(resource["spritesheet"],rect,posx,posy)
+
+def load_textures(animation_list):
+
+    for anim in animation_list:
+
+        anim["spritesheet"] = pr.load_texture(anim["spritesheet"])
+        pr.set_texture_filter(anim["spritesheet"],pr.TEXTURE_FILTER_POINT)
+
+def unload_textures(animation_list):
+
+    unloaded = set()
+
+    for anim in animation_list:
+        if id(anim["spritesheet"]) not in unloaded:
+            unloaded.add(id(anim["spritesheet"]))
+            pr.unload_texture(anim["spritesheet"])
+            
+def select_player_sprite(controls):
+
+
+    if controls:
+
+        sprite  = wizard_walk
+
+    else:
+
+        sprite = wizard_idle
+
+    return sprite
+
+async def main():
+    
     WIDTH = 1280
     HEIGHT = 720
 
     debug = False
-
+    controls = 0b0000   #init controller
+    
     player_pos = (100,100)
     player = 0b00000000 #init player
-    controls = 0b0000   #init controller
-    player_speed = 0.1
+
+    player_speed = 2.5
 
     player = activate(player,State.ALIVE)
 
     pr.init_window(WIDTH, HEIGHT, "Bit Wizard")
+
+    load_textures(TOTAL_ANIMATIONS)
 
     try:
         print("Executing from browser, resizing window...")
@@ -134,7 +201,6 @@ async def main():
         print("Executing from desktop, not resizing...")
 
  
-
     print("do you have sword: ",evaluate(player,Inventory.SWORD))
     print("Are you Alive? ",evaluate(player,State.ALIVE))
 
@@ -147,13 +213,13 @@ async def main():
         player_pos = (player_pos[0]+update_player_pos(controls,player_speed)[0], 
                       player_pos[1]+update_player_pos(controls,player_speed)[1])
 
-                   
+        player_sprite = select_player_sprite(controls)                  
 
         #RENDER:
         pr.begin_drawing()
         pr.clear_background(pr.WHITE)
 
-
+        animate_sprite(player_sprite,player_pos[0],player_pos[1])
 
         pr.draw_text("Bit Wizard", 30, 30, 20, pr.VIOLET)
         pr.draw_text(f"Press O for debug data", 30, 50, 20, pr.DARKGREEN)
@@ -164,10 +230,12 @@ async def main():
             pr.draw_text(f"Controller bits: {str(bin(controls))}", 190, 230, 20, pr.VIOLET)
             pr.draw_text(f"Player position: {str(player_pos)}", 190, 260, 20, pr.VIOLET)
             pr.draw_text(f"Movement vector: {str(update_player_pos(controls,player_speed))}", 190, 290, 20, pr.VIOLET)
+            pr.draw_text(("Current animation: " + player_sprite["id"]), 190, 310, 20, pr.VIOLET)
 
         pr.end_drawing()
         await asyncio.sleep(0)
 
+    unload_textures(TOTAL_ANIMATIONS)
     pr.close_window()
 
 asyncio.run(main())
