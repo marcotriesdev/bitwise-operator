@@ -11,8 +11,8 @@ wizard_idle = {"spritesheet":  "sprites/bit_idle.png",
                 "counter": 0  ,
                 "current_time": 0 ,
                 "id": "idle"}                
-
-shield = {"spritesheet":  "sprites/bit_shield.png",
+ 
+shield = {"spritesheet": "sprites/bit_shield.png",
                 "time"      : [30],
                 "counter": 0   ,
                 "current_time": 0 ,

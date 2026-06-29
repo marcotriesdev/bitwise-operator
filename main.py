@@ -4,10 +4,13 @@ import asyncio
 import platform
 import input_config as Inputs
 from animation import *
+import backgrounds as bg
 from enum import IntFlag
 from math import sqrt
 
 pr.VIOLET = pr.Color(240,180,220,255)
+
+scaling = 10
 
 class State(IntFlag):
 
@@ -52,34 +55,38 @@ def player_input(controls):
 
 
     #PRESS KEYS
-    if pr.is_key_down(Inputs.move_UP) and not pr.is_key_down(Inputs.move_DOWN):
+    if          (any(pr.is_key_down(key) for key in Inputs.move_UP) 
+        and not any(pr.is_key_down(key2) for key2 in Inputs.move_DOWN)):
         controls |= 1 << Controller.UP
          
 
-    elif pr.is_key_down(Inputs.move_DOWN) and not pr.is_key_down(Inputs.move_UP):
+    elif            (any(pr.is_key_down(key) for key in Inputs.move_DOWN) 
+        and not any(pr.is_key_down(key2) for key2 in Inputs.move_UP)):
         controls |= 1 << Controller.DOWN
       
 
-    if pr.is_key_down(Inputs.move_R) and not pr.is_key_down(Inputs.move_L):
+    if           (any(pr.is_key_down(key) for key in Inputs.move_R) 
+        and not any(pr.is_key_down(key2) for key2 in Inputs.move_L)):
         controls |= 1 << Controller.RIGHT      
 
 
-    elif pr.is_key_down(Inputs.move_L) and not pr.is_key_down(Inputs.move_R):
+    elif        (any(pr.is_key_down(key) for key in Inputs.move_L) 
+        and not any(pr.is_key_down(key2) for key2 in Inputs.move_R)):
         controls |= 1 << Controller.LEFT
 
 
 
     #RELEASE KEYS
-    if pr.is_key_released(Inputs.move_UP):
+    if any(pr.is_key_released(key) for key in Inputs.move_UP):
         controls &= ~(1<<Controller.UP)
 
-    if pr.is_key_released(Inputs.move_DOWN):
+    if any(pr.is_key_released(key) for key in Inputs.move_DOWN):
         controls &= ~(1<<Controller.DOWN)    
 
-    if pr.is_key_released(Inputs.move_L):
+    if any(pr.is_key_released(key) for key in Inputs.move_L):
         controls &= ~(1<<Controller.LEFT)
 
-    if pr.is_key_released(Inputs.move_R):
+    if any(pr.is_key_released(key) for key in Inputs.move_R):
         controls &= ~(1<<Controller.RIGHT)        
 
     return controls
@@ -107,7 +114,7 @@ def update_player_pos(controls,player_speed):
 
 def debug_toggle(debug):
 
-    if pr.is_key_pressed(Inputs.debug_ON):
+    if any(pr.is_key_pressed(key) for key in Inputs.debug_ON):
 
         debug = not debug
 
@@ -131,10 +138,10 @@ def mirror_sprite(controls,mirror):
 
 
 def draw_sprite(spritesheet,rect,posx,posy):
-    
+    global scaling
     pr.draw_texture_pro(spritesheet,
                         rect,
-                        pr.Rectangle(posx,posy,16*10,16*10),
+                        pr.Rectangle(posx,posy,16*scaling,16*scaling),
                         pr.Vector2(0,0),
                         0,
                         pr.WHITE)
@@ -164,6 +171,14 @@ def load_textures(animation_list):
         anim["spritesheet"] = pr.load_texture(anim["spritesheet"])
         pr.set_texture_filter(anim["spritesheet"],pr.TEXTURE_FILTER_POINT)
 
+
+def load_background(resource):
+
+    background = pr.load_texture(resource)
+    pr.set_texture_wrap(background,pr.TEXTURE_WRAP_REPEAT)
+
+    return background
+
 def unload_textures(animation_list):
 
     unloaded = set()
@@ -171,7 +186,9 @@ def unload_textures(animation_list):
     for anim in animation_list:
         if id(anim["spritesheet"]) not in unloaded:
             unloaded.add(id(anim["spritesheet"]))
+            print("unloaded successfully: ",anim)
             pr.unload_texture(anim["spritesheet"])
+            
             
 def select_player_sprite(controls):
 
@@ -190,6 +207,10 @@ async def main():
     
     WIDTH = 1280
     HEIGHT = 720
+    global scaling
+    bgscaling = scaling * 0.6
+
+    offset = 0
 
     debug = False
     controls = 0b0000   #init controller
@@ -205,6 +226,7 @@ async def main():
     pr.init_window(WIDTH, HEIGHT, "Bit Wizard")
 
     load_textures(TOTAL_ANIMATIONS)
+    background1 = load_background(bg.background_rocks)
 
     try:
         print("Executing from browser, resizing window...")
@@ -218,7 +240,6 @@ async def main():
 
     while not pr.window_should_close():
 
-
         #LOGIC:
         debug = debug_toggle(debug)
         controls = player_input(controls)
@@ -228,13 +249,24 @@ async def main():
                       player_pos[1]+update_player_pos(controls,player_speed)[1])
 
         player_sprite = select_player_sprite(controls)                  
-        print(mirror)
+        
 
 
         #RENDER:
         pr.begin_drawing()
         pr.clear_background(pr.WHITE)
+        
+        #RENDER BACKGROUND
+        offset += 1
+        pr.draw_texture_pro(background1,
+                            pr.Rectangle(0,0,WIDTH,HEIGHT),
+                            pr.Rectangle(0,0,WIDTH*(bgscaling),
+                            HEIGHT*(bgscaling)),
+                            (0,0),
+                            0,
+                            pr.Color(100,100,100,255))
 
+        #RENDER PLAYER
         animate_sprite(player_sprite,player_pos[0],player_pos[1],controls,mirror)
 
         pr.draw_text("Bit Wizard", 30, 30, 20, pr.VIOLET)
@@ -253,6 +285,7 @@ async def main():
         await asyncio.sleep(0)
 
     unload_textures(TOTAL_ANIMATIONS)
+    pr.unload_texture(background1)
     pr.close_window()
 
 asyncio.run(main())
