@@ -1,5 +1,3 @@
-
-
 wizard_walk = {"spritesheet": "sprites/bit_walk.png",
                 "time"      : [30,30],
                 "counter": 0 ,

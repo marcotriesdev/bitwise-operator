@@ -3,37 +3,29 @@ import pyray as pr
 import asyncio
 import platform
 import input_config as Inputs
-from animation import *
+import animation as Animation
+import collectables as Collectables
 import backgrounds as bg
-from enum import IntFlag
+import bitflags as Bitflags
 from math import sqrt
 
+
+
+scaling = 8
+bgscaling = scaling * 0.6
 pr.VIOLET = pr.Color(240,180,220,255)
 
-scaling = 10
+shadow_color = pr.Color(2,2,2,200)
+collision_color = pr.Color(50,50,200,180)
 
-class State(IntFlag):
+current_object = Bitflags.Inventory.EMPTY
 
-    ALIVE  =          0
-    WALK   =         1
-    ATTK   =        2
-
-class Inventory(IntFlag):  
-
-    SHLD   =       3
-    SWORD  =      4
-    POTION =     5
-    WAND   =    6
-    EMPTY  =   7
-
-class Controller(IntFlag):
-
-    UP =    0
-    RIGHT = 1
-    DOWN =  2
-    LEFT =  3
-
-current_object = Inventory.EMPTY
+def web_resizing_test():
+    try:
+        print("Executing from browser, resizing window...")
+        platform.window.window_resize()
+    except AttributeError:
+        print("Executing from desktop, not resizing...")
 
 def activate(player,object):
      
@@ -57,37 +49,37 @@ def player_input(controls):
     #PRESS KEYS
     if          (any(pr.is_key_down(key) for key in Inputs.move_UP) 
         and not any(pr.is_key_down(key2) for key2 in Inputs.move_DOWN)):
-        controls |= 1 << Controller.UP
+        controls |= 1 << Bitflags.Controller.UP
          
 
     elif            (any(pr.is_key_down(key) for key in Inputs.move_DOWN) 
         and not any(pr.is_key_down(key2) for key2 in Inputs.move_UP)):
-        controls |= 1 << Controller.DOWN
+        controls |= 1 << Bitflags.Controller.DOWN
       
 
     if           (any(pr.is_key_down(key) for key in Inputs.move_R) 
         and not any(pr.is_key_down(key2) for key2 in Inputs.move_L)):
-        controls |= 1 << Controller.RIGHT      
+        controls |= 1 << Bitflags.Controller.RIGHT      
 
 
     elif        (any(pr.is_key_down(key) for key in Inputs.move_L) 
         and not any(pr.is_key_down(key2) for key2 in Inputs.move_R)):
-        controls |= 1 << Controller.LEFT
+        controls |= 1 << Bitflags.Controller.LEFT
 
 
 
     #RELEASE KEYS
     if any(pr.is_key_released(key) for key in Inputs.move_UP):
-        controls &= ~(1<<Controller.UP)
+        controls &= ~(1<<Bitflags.Controller.UP)
 
     if any(pr.is_key_released(key) for key in Inputs.move_DOWN):
-        controls &= ~(1<<Controller.DOWN)    
+        controls &= ~(1<<Bitflags.Controller.DOWN)    
 
     if any(pr.is_key_released(key) for key in Inputs.move_L):
-        controls &= ~(1<<Controller.LEFT)
+        controls &= ~(1<<Bitflags.Controller.LEFT)
 
     if any(pr.is_key_released(key) for key in Inputs.move_R):
-        controls &= ~(1<<Controller.RIGHT)        
+        controls &= ~(1<<Bitflags.Controller.RIGHT)        
 
     return controls
 
@@ -95,13 +87,13 @@ def update_player_pos(controls,player_speed):
 
     mov_x, mov_y = 0,0
 
-    if controls & 1<<Controller.UP:
+    if controls & 1<<Bitflags.Controller.UP:
         mov_y = -1
-    if controls & 1<<Controller.RIGHT:
+    if controls & 1<<Bitflags.Controller.RIGHT:
         mov_x = 1
-    if controls & 1<<Controller.DOWN:
+    if controls & 1<<Bitflags.Controller.DOWN:
         mov_y = 1
-    if controls & 1<<Controller.LEFT:
+    if controls & 1<<Bitflags.Controller.LEFT:
         mov_x = -1
 
     magnitude = sqrt(mov_x**2 + mov_y**2)
@@ -120,22 +112,18 @@ def debug_toggle(debug):
 
     return debug
 
-
 def draw_rec(w,h,locx,locy):
 
     pr.draw_rectangle(locx,locy,w,h,pr.SKYBLUE)
 
-
 def mirror_sprite(controls,mirror):
 
-    if controls & 1<< Controller.RIGHT:
+    if controls & 1<< Bitflags.Controller.RIGHT:
         return 1
-    elif controls & 1<< Controller.LEFT:
+    elif controls & 1<< Bitflags.Controller.LEFT:
         return -1
 
     return mirror
-
-
 
 def draw_sprite(spritesheet,rect,posx,posy):
     global scaling
@@ -146,8 +134,7 @@ def draw_sprite(spritesheet,rect,posx,posy):
                         0,
                         pr.WHITE)
     
-
-def animate_sprite(resource,posx,posy,controls,mirror):
+def animate_draw_sprite(resource,posx,posy,controls,mirror):
     
     
     if resource["counter"] < resource["time"][resource["current_time"]]:
@@ -164,13 +151,18 @@ def animate_sprite(resource,posx,posy,controls,mirror):
 
     draw_sprite(resource["spritesheet"],rect,posx,posy)
 
-def load_textures(animation_list):
+def load_animations(animation_list):
 
     for anim in animation_list:
 
         anim["spritesheet"] = pr.load_texture(anim["spritesheet"])
         pr.set_texture_filter(anim["spritesheet"],pr.TEXTURE_FILTER_POINT)
 
+def load_static_sprites(sprite_list):
+
+    for item in sprite_list:
+        item["file"] = pr.load_texture(item["file"])
+        pr.set_texture_filter(item["file"],pr.TEXTURE_FILTER_POINT)
 
 def load_background(resource):
 
@@ -179,7 +171,7 @@ def load_background(resource):
 
     return background
 
-def unload_textures(animation_list):
+def unload_animations(animation_list):
 
     unloaded = set()
 
@@ -188,55 +180,127 @@ def unload_textures(animation_list):
             unloaded.add(id(anim["spritesheet"]))
             print("unloaded successfully: ",anim)
             pr.unload_texture(anim["spritesheet"])
-            
+
+def unload_static_sprites(sprite_list):
+
+    unloaded = set()
+    for item in sprite_list:
+        if id(item["file"]) not in unloaded:
+            unloaded.add(id(item["file"]))
+            print("unloaded sprite successfully: ",item)
+            pr.unload_texture(item["file"])
             
 def select_player_sprite(controls):
 
 
     if controls:
 
-        sprite  = wizard_walk
+        sprite  = Animation.wizard_walk
 
     else:
 
-        sprite = wizard_idle
+        sprite = Animation.wizard_idle
 
     return sprite
 
+def spawn_collectable(item,item_list,init_location):
+               #pup_item,list,tuple
+
+    new_item            = {}
+ 
+    new_item["locX"]    = init_location[0]
+    new_item["locY"]    = init_location[1]   
+    new_item["id"]      = item["id"]
+    new_item["file"]  = item["file"]
+    new_item["bitflag"] = item["bitflag"]
+
+    item_list.append(new_item)
+
+
+    return item_list
+
+def draw_collectables(item_list):
+    global scaling
+
+    shadow_offset = 20
+
+    for item in item_list:
+        
+        pr.draw_texture_pro(item["file"],
+                            pr.Rectangle(0,0,16,16),
+                            pr.Rectangle(item["locX"]+shadow_offset,item["locY"]+shadow_offset,16*scaling,16*scaling),
+                            (0,0),
+                            0,
+                            shadow_color)
+        pr.draw_texture_pro(item["file"],
+                            pr.Rectangle(0,0,16,16),
+                            pr.Rectangle(item["locX"],item["locY"],16*scaling,16*scaling),
+                            (0,0),
+                            0,
+                            pr.WHITE)
+
+def collectable_collision():
+    pass
+
+def draw_player_collision(player_position):
+    global scaling
+
+    pr.draw_rectangle(int(player_position[0]),
+                      int(player_position[1]),
+                      16*scaling,
+                      16*scaling,
+                      collision_color)
+
+def draw_collectables_collisions(item_list):
+    global scaling
+
+    for item in item_list:
+        pr.draw_rectangle(item["locX"],item["locY"],16*scaling,16*scaling,collision_color)
+
 async def main():
-    
+
+    web_resizing_test()
+
     WIDTH = 1280
     HEIGHT = 720
-    global scaling
-    bgscaling = scaling * 0.6
 
-    offset = 0
+    global scaling
+    global bgscaling
+
+    debug_window_x = 30
+    debug_window_y = 60
+    debug_margin_text = 35
+
+    pr.init_window(WIDTH, HEIGHT, "Bit Wizard")    
+
+    #offset = 0
 
     debug = False
     controls = 0b0000   #init controller
+    player = 0b00000000 #init player state and inventory in one byte
+    player = activate(player,Bitflags.State.ALIVE)
     mirror = 1
-    
-    player_pos = (100,100)
-    player = 0b00000000 #init player
 
     player_speed = 2.5
+    player_pos = (50,50)
+    player_size = 16
+    
+    collectables_list = []
+    enemies_list      = []
 
-    player = activate(player,State.ALIVE)
-
-    pr.init_window(WIDTH, HEIGHT, "Bit Wizard")
-
-    load_textures(TOTAL_ANIMATIONS)
     background1 = load_background(bg.background_rocks)
+    load_animations(Animation.TOTAL_ANIMATIONS)
+    load_static_sprites(Collectables.TOTAL_SPRITES)
+    
+    #SPAWN COLLECTABLES
+    spawn_collectable(Collectables.pup_sword,
+                collectables_list,
+                (250,250))
 
-    try:
-        print("Executing from browser, resizing window...")
-        platform.window.window_resize()
-    except AttributeError:
-        print("Executing from desktop, not resizing...")
 
- 
-    print("do you have sword: ",evaluate(player,Inventory.SWORD))
-    print("Are you Alive? ",evaluate(player,State.ALIVE))
+    #CHANGE FOR AN ACTUAL GUI INVENTORY
+    print("do you have sword: ",evaluate(player,Bitflags.Inventory.SWORD))
+    print("Are you Alive? ",evaluate(player,Bitflags.State.ALIVE))
 
     while not pr.window_should_close():
 
@@ -249,15 +313,13 @@ async def main():
                       player_pos[1]+update_player_pos(controls,player_speed)[1])
 
         player_sprite = select_player_sprite(controls)                  
-        
 
-
-        #RENDER:
+        #RENDER
         pr.begin_drawing()
         pr.clear_background(pr.WHITE)
         
         #RENDER BACKGROUND
-        offset += 1
+        #offset += 1
         pr.draw_texture_pro(background1,
                             pr.Rectangle(0,0,WIDTH,HEIGHT),
                             pr.Rectangle(0,0,WIDTH*(bgscaling),
@@ -265,27 +327,61 @@ async def main():
                             (0,0),
                             0,
                             pr.Color(100,100,100,255))
+        #RENDER COLLECTABLES
+        draw_collectables(collectables_list)
 
         #RENDER PLAYER
-        animate_sprite(player_sprite,player_pos[0],player_pos[1],controls,mirror)
+        animate_draw_sprite(player_sprite,player_pos[0],player_pos[1],controls,mirror)
 
+        #GUI TEXT
         pr.draw_text("Bit Wizard", 30, 30, 20, pr.VIOLET)
         pr.draw_text(f"Press O for debug data", 30, 50, 20, pr.DARKGREEN)
 
 
         if debug:
-            pr.draw_rectangle(80,220,600,200,pr.Color(20,20,20,180))    
-            pr.draw_text(f"Controller bits: {str(bin(controls))}", 90, 230, 20, pr.VIOLET)
-            pr.draw_text(f"Player position: {str(player_pos)}", 90, 260, 20, pr.VIOLET)
-            pr.draw_text(f"Movement vector: {str(update_player_pos(controls,player_speed))}", 90, 290, 20, pr.VIOLET)
-            pr.draw_text(("Current animation: " + player_sprite["id"]), 90, 310, 20, pr.VIOLET)
-            pr.draw_text(("Current frame: " + str(player_sprite["current_time"])), 90, 340, 20, pr.VIOLET)
+            draw_player_collision(player_pos)
+            draw_collectables_collisions(collectables_list)
+            pr.draw_rectangle(debug_window_x,
+                                debug_window_y,
+                                600,200,
+                                pr.Color(20,20,20,180))   
+
+            pr.draw_text(f"Controller bits: {str(bin(controls))}",
+                         debug_window_x, 
+                         debug_window_y+debug_margin_text, 
+                         20, 
+                         pr.VIOLET)
+
+            pr.draw_text(f"Player position: {str(player_pos)}", 
+                        debug_window_x, 
+                        debug_window_y+(debug_margin_text*2), 
+                        20, 
+                        pr.VIOLET)
+
+            pr.draw_text(f"Movement vector: {str(update_player_pos(controls,player_speed))}", 
+                        debug_window_x, 
+                        debug_window_y+(debug_margin_text*3), 
+                        20, 
+                        pr.VIOLET)
+
+            pr.draw_text(("Current animation: " + player_sprite["id"]), 
+                        debug_window_x,
+                        debug_window_y+(debug_margin_text*4), 
+                        20, 
+                        pr.VIOLET)
+
+            pr.draw_text(("Current frame: " + str(player_sprite["current_time"])), 
+                        debug_window_x,debug_window_y+(debug_margin_text*5), 
+                        20, 
+                        pr.VIOLET)
 
         pr.end_drawing()
         await asyncio.sleep(0)
 
-    unload_textures(TOTAL_ANIMATIONS)
+    unload_animations(Animation.TOTAL_ANIMATIONS)
+    unload_static_sprites(Collectables.TOTAL_SPRITES)
     pr.unload_texture(background1)
+
     pr.close_window()
 
 asyncio.run(main())
