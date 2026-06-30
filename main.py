@@ -2,17 +2,19 @@
 import pyray as pr
 import asyncio
 import platform
+
 import input_config as Inputs
 import animation as Animation
 import collectables as Collectables
 import backgrounds as bg
 import bitflags as Bitflags
-from math import sqrt
+
+from math import sqrt, sin
 
 
-
-scaling = 8
+scaling = 7
 bgscaling = scaling * 0.6
+item_scaling = scaling * 0.5
 pr.VIOLET = pr.Color(240,180,220,255)
 
 shadow_color = pr.Color(2,2,2,200)
@@ -213,6 +215,10 @@ def spawn_collectable(item,item_list,init_location):
     new_item["id"]      = item["id"]
     new_item["file"]  = item["file"]
     new_item["bitflag"] = item["bitflag"]
+    new_item["rect"] = pr.Rectangle(new_item["locX"],
+                                    new_item["locY"],
+                                    16*item_scaling,
+                                    16*item_scaling)
 
     item_list.append(new_item)
 
@@ -228,34 +234,69 @@ def draw_collectables(item_list):
         
         pr.draw_texture_pro(item["file"],
                             pr.Rectangle(0,0,16,16),
-                            pr.Rectangle(item["locX"]+shadow_offset,item["locY"]+shadow_offset,16*scaling,16*scaling),
+                            pr.Rectangle(item["locX"]+shadow_offset,
+                            item["locY"]+shadow_offset,
+                            16*item_scaling,
+                            16*item_scaling),
                             (0,0),
                             0,
                             shadow_color)
         pr.draw_texture_pro(item["file"],
                             pr.Rectangle(0,0,16,16),
-                            pr.Rectangle(item["locX"],item["locY"],16*scaling,16*scaling),
+                            pr.Rectangle(item["locX"],
+                            item["locY"],
+                            16*item_scaling,
+                            16*item_scaling),
                             (0,0),
                             0,
                             pr.WHITE)
 
-def collectable_collision():
-    pass
+def collectable_collision(player,player_rect,item_list):
 
-def draw_player_collision(player_position):
+    for item in item_list:
+        if pr.check_collision_recs(player_rect,item["rect"]):
+            if not evaluate(player, item["bitflag"]):
+                print("collecting item: ",item["id"])
+                player = activate(player,item["bitflag"])   
+                
+            print("removing item from collectables item")
+            item_list.remove(item)
+            
+    
+    return player
+
+
+def draw_player_collision(player_rec):
     global scaling
 
-    pr.draw_rectangle(int(player_position[0]),
-                      int(player_position[1]),
-                      16*scaling,
-                      16*scaling,
-                      collision_color)
+    pr.draw_rectangle_rec(player_rec,collision_color)
 
 def draw_collectables_collisions(item_list):
     global scaling
 
     for item in item_list:
-        pr.draw_rectangle(item["locX"],item["locY"],16*scaling,16*scaling,collision_color)
+        pr.draw_rectangle_rec(item["rect"],collision_color)
+
+def delta_process(delta):
+
+    if delta < 6.28:
+        delta += 0.2
+    else:
+        delta = 0
+
+    return delta
+
+
+def oscillator(delta):
+
+    osc= sin(delta) 
+
+    return osc
+
+def floaty_collectibles(item_list,delta,intensity):
+
+    for item in item_list:
+        item["locY"] += oscillator(delta)*intensity
 
 async def main():
 
@@ -263,6 +304,8 @@ async def main():
 
     WIDTH = 1280
     HEIGHT = 720
+
+    delta = 0
 
     global scaling
     global bgscaling
@@ -279,14 +322,19 @@ async def main():
     controls = 0b0000   #init controller
     player = 0b00000000 #init player state and inventory in one byte
     player = activate(player,Bitflags.State.ALIVE)
+    
     mirror = 1
 
     player_speed = 2.5
     player_pos = (50,50)
     player_size = 16
+    player_rect = pr.Rectangle(player_pos[0],
+                               player_pos[1],
+                               player_size*scaling,
+                               player_size*scaling)
     
     collectables_list = []
-    enemies_list      = []
+    enemies_list      = [] #not implemented yet hehe!
 
     background1 = load_background(bg.background_rocks)
     load_animations(Animation.TOTAL_ANIMATIONS)
@@ -297,6 +345,13 @@ async def main():
                 collectables_list,
                 (250,250))
 
+    spawn_collectable(Collectables.pup_potion,
+                 collectables_list,
+                (350,420))
+
+    spawn_collectable(Collectables.pup_wand,
+                 collectables_list,
+                (150,520))
 
     #CHANGE FOR AN ACTUAL GUI INVENTORY
     print("do you have sword: ",evaluate(player,Bitflags.Inventory.SWORD))
@@ -305,14 +360,24 @@ async def main():
     while not pr.window_should_close():
 
         #LOGIC:
+        delta = delta_process(delta)
+        floaty_collectibles(collectables_list,delta,2)
+
         debug = debug_toggle(debug)
         controls = player_input(controls)
         mirror = mirror_sprite(controls,mirror)
         
         player_pos = (player_pos[0]+update_player_pos(controls,player_speed)[0], 
                       player_pos[1]+update_player_pos(controls,player_speed)[1])
+        player_rect = pr.Rectangle(player_pos[0],
+                                   player_pos[1],
+                                   player_size*scaling,
+                                   player_size*scaling)
 
-        player_sprite = select_player_sprite(controls)                  
+        player_sprite = select_player_sprite(controls)
+
+        #COLLISION LOGIC
+        player = collectable_collision(player,player_rect,collectables_list)
 
         #RENDER
         pr.begin_drawing()
@@ -339,12 +404,18 @@ async def main():
 
 
         if debug:
-            draw_player_collision(player_pos)
+            draw_player_collision(player_rect)
             draw_collectables_collisions(collectables_list)
             pr.draw_rectangle(debug_window_x,
                                 debug_window_y,
                                 600,200,
                                 pr.Color(20,20,20,180))   
+ 
+            pr.draw_text(f"Player Byte: {str(bin(player))}",
+                         debug_window_x, 
+                         debug_window_y, 
+                         20, 
+                         pr.VIOLET)
 
             pr.draw_text(f"Controller bits: {str(bin(controls))}",
                          debug_window_x, 
