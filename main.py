@@ -297,7 +297,7 @@ def floaty_collectibles(item_list,delta,intensity):
     for item in item_list:
         item["locY"] += oscillator(delta)*intensity
 
-def hud_render(player,screen_width,screen_height,font):
+def hud_render(player,screen_width,screen_height,font,game_title):
     global hud_scaling
 
     hud_locX = screen_width*0.38
@@ -367,21 +367,21 @@ def hud_render(player,screen_width,screen_height,font):
 
     #HUD TITLE
     pr.draw_text_ex(font,
-                    "> Bit Wizard <",
+                    game_title,
                     pr.Vector2(title_locX+2,title_locY+2),
                     60,
                     2,
                     title_color_dark)
 
     pr.draw_text_ex(font,
-                    "> Bit Wizard <",
+                    game_title,
                     pr.Vector2(title_locX-2,title_locY-2),
                     60,
                     2,
                     title_color_bright)
              
     pr.draw_text_ex(font,
-                    "> Bit Wizard <",
+                    game_title,
                     pr.Vector2(title_locX,title_locY),
                     60,
                     2,
@@ -392,6 +392,7 @@ async def main():
 
     WIDTH = 1280
     HEIGHT = 720
+    game_title = "> Bit Wizard <"
 
     delta = 0
 
@@ -497,7 +498,7 @@ async def main():
         pr.draw_text(f"Press O for debug data", 30, 50, 20, pr.DARKGREEN)
 
         #HUD RENDER duuuh!
-        hud_render(player,WIDTH,HEIGHT,font1)
+        hud_render(player,WIDTH,HEIGHT,font1,game_title)
 
 
         if debug:
