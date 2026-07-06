@@ -2,22 +2,25 @@
 import pyray as pr
 import asyncio
 import platform
+from math import sqrt, sin,pi
 
+import bitflags as Bitflags
 import input_config as Inputs
+
 import animation as Animation
 import collectables as Collectables
+import hud_sprites as HUD
 import backgrounds as bg
-import bitflags as Bitflags
-
-from math import sqrt, sin
-
+import fonts 
 
 scaling = 7
+hud_scaling = scaling * 0.6
 bgscaling = scaling * 0.6
 item_scaling = scaling * 0.5
 pr.VIOLET = pr.Color(240,180,220,255)
 
 shadow_color = pr.Color(2,2,2,200)
+empty_hud_color = pr.Color(100,100,75,255)
 collision_color = pr.Color(50,50,200,180)
 
 current_object = Bitflags.Inventory.EMPTY
@@ -265,7 +268,6 @@ def collectable_collision(player,player_rect,item_list):
     
     return player
 
-
 def draw_player_collision(player_rec):
     global scaling
 
@@ -279,17 +281,14 @@ def draw_collectables_collisions(item_list):
 
 def delta_process(delta):
 
-    if delta < 6.28:
-        delta += 0.2
-    else:
-        delta = 0
+    delta += 0.1
 
     return delta
 
-
 def oscillator(delta):
 
-    osc= sin(delta) 
+    speed_multiplier = 0.3
+    osc= sin(delta*speed_multiplier) 
 
     return osc
 
@@ -298,6 +297,95 @@ def floaty_collectibles(item_list,delta,intensity):
     for item in item_list:
         item["locY"] += oscillator(delta)*intensity
 
+def hud_render(player,screen_width,screen_height,font):
+    global hud_scaling
+
+    hud_locX = screen_width*0.38
+    hud_locY = 20
+    frame_width = 8
+    frame_color = pr.Color(150,140,100,255)
+    title_color = pr.Color(120,110,70,255)
+    title_color_bright = pr.Color(170,160,120,255)
+    title_color_dark = pr.Color(90,80,60,255)
+
+    title_locX = frame_width+60
+    title_locY = frame_width
+
+    #TITLE BOX
+
+    pr.draw_rectangle(0,5,screen_width,int(HUD.item_size*hud_scaling+5),title_color)
+
+    pr.draw_rectangle(0,0,screen_width,int(HUD.item_size*hud_scaling+5),frame_color)
+
+    #EMPTY SPRITE
+    for i in range(4):
+        offset = HUD.item_size * i
+        pr.draw_texture_pro(HUD.hud_empty["file"],
+                            pr.Rectangle(0,0,HUD.item_size,HUD.item_size),
+                            pr.Rectangle(hud_locX+(offset*hud_scaling),
+                                         hud_locY,
+                                         (HUD.item_size*hud_scaling),
+                                         (HUD.item_size*hud_scaling)),
+                            pr.Vector2(0,0),
+                            0.0,
+                            empty_hud_color)
+
+        #ITEM SPRITE                        #the +1 offset to the index is to skip the empty inventory sprite
+        if evaluate(player,HUD.TOTAL_SPRITES[i+1]["bitflag"]):
+            pr.draw_texture_pro(HUD.TOTAL_SPRITES[i+1]["file"],
+                                pr.Rectangle(0,0,HUD.item_size,HUD.item_size),
+                                pr.Rectangle(hud_locX+(offset*hud_scaling),
+                                             hud_locY,
+                                             (HUD.item_size*hud_scaling),
+                                             (HUD.item_size*hud_scaling)),
+                                pr.Vector2(0,0),
+                                0.0,
+                                pr.WHITE)
+
+    #HUD ITEM FRAME
+
+    pr.draw_rectangle_lines_ex(pr.Rectangle(hud_locX-frame_width,
+                      hud_locY-frame_width,
+                      (4*(HUD.item_size*hud_scaling)+frame_width*2.5),
+                      (HUD.item_size*hud_scaling)+frame_width*2.5),
+                      frame_width,
+                      title_color)
+
+    pr.draw_rectangle_lines_ex(pr.Rectangle(hud_locX-frame_width,
+                      hud_locY-frame_width,
+                      (4*(HUD.item_size*hud_scaling)+frame_width*2.0),
+                      (HUD.item_size*hud_scaling)+frame_width*2.0),
+                      frame_width,
+                      frame_color)
+
+    #SCREEN FRAME
+    pr.draw_rectangle_lines_ex(pr.Rectangle(0,0,screen_width,screen_height),
+                               frame_width,
+                               frame_color)   
+
+
+
+    #HUD TITLE
+    pr.draw_text_ex(font,
+                    "> Bit Wizard <",
+                    pr.Vector2(title_locX+2,title_locY+2),
+                    60,
+                    2,
+                    title_color_dark)
+
+    pr.draw_text_ex(font,
+                    "> Bit Wizard <",
+                    pr.Vector2(title_locX-2,title_locY-2),
+                    60,
+                    2,
+                    title_color_bright)
+             
+    pr.draw_text_ex(font,
+                    "> Bit Wizard <",
+                    pr.Vector2(title_locX,title_locY),
+                    60,
+                    2,
+                    title_color)
 async def main():
 
     web_resizing_test()
@@ -339,6 +427,8 @@ async def main():
     background1 = load_background(bg.background_rocks)
     load_animations(Animation.TOTAL_ANIMATIONS)
     load_static_sprites(Collectables.TOTAL_SPRITES)
+    load_static_sprites(HUD.TOTAL_SPRITES)
+    font1 = pr.load_font(fonts.medieval_font["file"])
     
     #SPAWN COLLECTABLES
     spawn_collectable(Collectables.pup_sword,
@@ -353,6 +443,10 @@ async def main():
                  collectables_list,
                 (150,520))
 
+    spawn_collectable(Collectables.pup_shield,
+                 collectables_list,
+                (650,620))    
+
     #CHANGE FOR AN ACTUAL GUI INVENTORY
     print("do you have sword: ",evaluate(player,Bitflags.Inventory.SWORD))
     print("Are you Alive? ",evaluate(player,Bitflags.State.ALIVE))
@@ -361,7 +455,7 @@ async def main():
 
         #LOGIC:
         delta = delta_process(delta)
-        floaty_collectibles(collectables_list,delta,2)
+        floaty_collectibles(collectables_list,delta,0.2)
 
         debug = debug_toggle(debug)
         controls = player_input(controls)
@@ -399,8 +493,11 @@ async def main():
         animate_draw_sprite(player_sprite,player_pos[0],player_pos[1],controls,mirror)
 
         #GUI TEXT
-        pr.draw_text("Bit Wizard", 30, 30, 20, pr.VIOLET)
+        #pr.draw_text("Bit Wizard", 30, 30, 20, pr.VIOLET)
         pr.draw_text(f"Press O for debug data", 30, 50, 20, pr.DARKGREEN)
+
+        #HUD RENDER duuuh!
+        hud_render(player,WIDTH,HEIGHT,font1)
 
 
         if debug:
@@ -451,6 +548,7 @@ async def main():
 
     unload_animations(Animation.TOTAL_ANIMATIONS)
     unload_static_sprites(Collectables.TOTAL_SPRITES)
+    unload_static_sprites(HUD.TOTAL_SPRITES)
     pr.unload_texture(background1)
 
     pr.close_window()

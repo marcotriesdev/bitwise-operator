@@ -1,0 +1,30 @@
+from bitflags import *
+
+hud_sword = {"id": "hud sword",
+            "file": "sprites/hud_sword.png",
+            "bitflag": Inventory.SWORD}
+
+hud_shield = {"id": "hud shield",
+            "file": "sprites/hud_shield.png",
+            "bitflag": Inventory.SHIELD}
+
+hud_wand = {"id": "hud wand",
+            "file": "sprites/hud_wand.png",
+            "bitflag": Inventory.WAND}
+
+hud_potion = {"id": "hud potion",
+            "file": "sprites/hud_potion.png",
+            "bitflag": Inventory.POTION}
+
+hud_empty = {"id": "hud empty",
+            "file": "sprites/hud_empty.png",
+            "bitflag": Inventory.POTION}
+
+item_size = 16 #the square size of the sprites
+
+                #never move hud_empty from index 0 or it will break rendering hehe
+TOTAL_SPRITES = [hud_empty,
+                hud_sword,
+                hud_shield,
+                hud_wand,
+                hud_potion]
