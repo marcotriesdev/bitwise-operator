@@ -254,19 +254,24 @@ def draw_collectables(item_list):
                             0,
                             pr.WHITE)
 
-def collectable_collision(player,player_rect,item_list):
+def collectable_collision(player,player_rect,item_list,player_lives):
 
     for item in item_list:
         if pr.check_collision_recs(player_rect,item["rect"]):
-            if not evaluate(player, item["bitflag"]):
-                print("collecting item: ",item["id"])
-                player = activate(player,item["bitflag"])   
+            if not item["id"] == "collectable heart":
+                if not evaluate(player, item["bitflag"]):
+                    print("collecting item: ",item["id"])
+                    player = activate(player,item["bitflag"])
+                    print("removing item from collectables item")
+                    item_list.remove(item) 
+            else:
+                print("got a lil heart pickup for you!")
+                player_lives += 1
+                item_list.remove(item)
+                print("removed heart pickup from the world")
+
                 
-            print("removing item from collectables item")
-            item_list.remove(item)
-            
-    
-    return player
+    return player, player_lives
 
 def draw_player_collision(player_rec):
     global scaling
@@ -476,7 +481,7 @@ async def main():
     
     mirror = 1
 
-    player_lives = 3
+    player_lives = 1
     player_speed = 2.5
     player_pos = (50,50)
     player_size = 16
@@ -511,6 +516,18 @@ async def main():
                  collectables_list,
                 (650,620))    
 
+    spawn_collectable(Collectables.pup_heart,
+                 collectables_list,
+                 (700+60,200))
+
+    spawn_collectable(Collectables.pup_heart,
+                 collectables_list,
+                 (700,200+50))
+
+    spawn_collectable(Collectables.pup_heart,
+                 collectables_list,
+                 (700+30,200))
+
     #CHANGE FOR AN ACTUAL GUI INVENTORY
     print("do you have sword: ",evaluate(player,Bitflags.Inventory.SWORD))
     print("Are you Alive? ",evaluate(player,Bitflags.State.ALIVE))
@@ -536,7 +553,7 @@ async def main():
         player_sprite = select_player_sprite(controls)
 
         #COLLISION LOGIC
-        player = collectable_collision(player,player_rect,collectables_list)
+        player, player_lives = collectable_collision(player,player_rect,collectables_list,player_lives)
 
         #RENDER
         pr.begin_drawing()
