@@ -20,6 +20,11 @@ hud_empty = {"id": "hud empty",
             "file": "sprites/hud_empty.png",
             "bitflag": Inventory.POTION}
 
+hud_heart = {"id": "hud heart",
+            "file": "sprites/heart.png",
+            "bitflag": None
+            }
+
 item_size = 16 #the square size of the sprites
 
                 #never move hud_empty from index 0 or it will break rendering hehe
@@ -27,4 +32,5 @@ TOTAL_SPRITES = [hud_empty,
                 hud_sword,
                 hud_shield,
                 hud_wand,
-                hud_potion]
+                hud_potion,
+                hud_heart]

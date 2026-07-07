@@ -297,19 +297,31 @@ def floaty_collectibles(item_list,delta,intensity):
     for item in item_list:
         item["locY"] += oscillator(delta)*intensity
 
-def hud_render(player,screen_width,screen_height,font,game_title):
+def hud_render(player,screen_width,screen_height,font,game_title,hearts):
     global hud_scaling
 
     hud_locX = screen_width*0.38
     hud_locY = 20
-    frame_width = 8
+    hearts_spacing = 10
+    hearts_locX = hud_locX
+    hearts_locY = hud_locY+(HUD.item_size*hud_scaling)+hearts_spacing
+
+    heart_frame_X = 350
+    heart_frame_y = hud_locY
+    
+    frame_thick = 8
     frame_color = pr.Color(150,140,100,255)
+    frame_color_bright = pr.Color(180,170,110,255)
+    frame_color_dark = pr.Color(75,70,50,255)
+
     title_color = pr.Color(120,110,70,255)
     title_color_bright = pr.Color(170,160,120,255)
     title_color_dark = pr.Color(90,80,60,255)
 
-    title_locX = frame_width+60
-    title_locY = frame_width
+
+
+    title_locX = frame_thick+60
+    title_locY = frame_thick
 
     #TITLE BOX
 
@@ -344,23 +356,63 @@ def hud_render(player,screen_width,screen_height,font,game_title):
 
     #HUD ITEM FRAME
 
-    pr.draw_rectangle_lines_ex(pr.Rectangle(hud_locX-frame_width,
-                      hud_locY-frame_width,
-                      (4*(HUD.item_size*hud_scaling)+frame_width*2.5),
-                      (HUD.item_size*hud_scaling)+frame_width*2.5),
-                      frame_width,
+    pr.draw_rectangle_lines_ex(pr.Rectangle(hud_locX- frame_thick,
+                      hud_locY- frame_thick,
+                      (4*(HUD.item_size*hud_scaling)+ frame_thick*2.5),
+                      (HUD.item_size*hud_scaling)+ frame_thick*2.5),
+                       frame_thick,
                       title_color)
 
-    pr.draw_rectangle_lines_ex(pr.Rectangle(hud_locX-frame_width,
-                      hud_locY-frame_width,
-                      (4*(HUD.item_size*hud_scaling)+frame_width*2.0),
-                      (HUD.item_size*hud_scaling)+frame_width*2.0),
-                      frame_width,
+    pr.draw_rectangle_lines_ex(pr.Rectangle(hud_locX- frame_thick,
+                      hud_locY- frame_thick,
+                      (4*(HUD.item_size*hud_scaling)+ frame_thick*2.0),
+                      (HUD.item_size*hud_scaling)+ frame_thick*2.0),
+                       frame_thick,
                       frame_color)
+
+    #HEARTS FRAME
+    pr.draw_rectangle_gradient_ex(pr.Rectangle(hud_locX- frame_thick+heart_frame_X,
+                                               hud_locY- frame_thick,
+                                               (3*(HUD.item_size*hud_scaling)+ frame_thick*2.5),
+                                               (HUD.item_size*hud_scaling)+ frame_thick*2.5),
+                                title_color_bright,
+                                title_color_dark,
+                                title_color_bright,
+                                title_color_dark)
+
+
+    pr.draw_rectangle_lines_ex(pr.Rectangle(hud_locX- frame_thick+heart_frame_X,
+                      hud_locY- frame_thick,
+                      (3*(HUD.item_size*hud_scaling)+ frame_thick*2.5),
+                      (HUD.item_size*hud_scaling)+ frame_thick*2.5),
+                       frame_thick,
+                      title_color)
+
+    pr.draw_rectangle_lines_ex(pr.Rectangle(hud_locX- frame_thick+heart_frame_X,
+                      hud_locY- frame_thick,
+                      (3*(HUD.item_size*hud_scaling)+ frame_thick*2.0),
+                      (HUD.item_size*hud_scaling)+ frame_thick*2.0),
+                       frame_thick,
+                      frame_color)
+
+    #HEARTS
+    for i in range(hearts):
+        offset = i*HUD.item_size
+
+        pr.draw_texture_pro(HUD.hud_heart["file"],
+                            pr.Rectangle(0,0,HUD.item_size,HUD.item_size),
+                            pr.Rectangle(hearts_locX+(offset*hud_scaling)+(hearts_spacing*i)+heart_frame_X+5,
+                                        heart_frame_y,
+                                        HUD.item_size*hud_scaling*0.60,
+                                        HUD.item_size*hud_scaling*0.8),
+                                pr.Vector2(0,0),
+                                0.0,
+                                pr.WHITE)
+
 
     #SCREEN FRAME
     pr.draw_rectangle_lines_ex(pr.Rectangle(0,0,screen_width,screen_height),
-                               frame_width,
+                                frame_thick,
                                frame_color)   
 
 
@@ -386,6 +438,15 @@ def hud_render(player,screen_width,screen_height,font,game_title):
                     60,
                     2,
                     title_color)
+
+def limit_lives(player_lives):
+
+    if player_lives > 3:
+        print("limiting player lives to 3")
+        player_lives = 3
+
+    return player_lives
+
 async def main():
 
     web_resizing_test()
@@ -411,9 +472,11 @@ async def main():
     controls = 0b0000   #init controller
     player = 0b00000000 #init player state and inventory in one byte
     player = activate(player,Bitflags.State.ALIVE)
+
     
     mirror = 1
 
+    player_lives = 3
     player_speed = 2.5
     player_pos = (50,50)
     player_size = 16
@@ -461,6 +524,7 @@ async def main():
         debug = debug_toggle(debug)
         controls = player_input(controls)
         mirror = mirror_sprite(controls,mirror)
+        player_lives = limit_lives(player_lives)
         
         player_pos = (player_pos[0]+update_player_pos(controls,player_speed)[0], 
                       player_pos[1]+update_player_pos(controls,player_speed)[1])
@@ -498,7 +562,7 @@ async def main():
         pr.draw_text(f"Press O for debug data", 30, 50, 20, pr.DARKGREEN)
 
         #HUD RENDER duuuh!
-        hud_render(player,WIDTH,HEIGHT,font1,game_title)
+        hud_render(player,WIDTH,HEIGHT,font1,game_title,player_lives)
 
 
         if debug:

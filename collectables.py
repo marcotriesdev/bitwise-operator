@@ -16,5 +16,9 @@ pup_potion = {"id": "collectable potion",
             "file": "sprites/pup_potion.png",
             "bitflag": Inventory.POTION}
 
+pup_heart = {"id": "collectable heart",
+            "file": "sprites/heart.png",
+            "bitflag": None}
 
-TOTAL_SPRITES = [pup_sword,pup_shield,pup_wand,pup_potion]
+
+TOTAL_SPRITES = [pup_sword,pup_shield,pup_wand,pup_potion,pup_heart]
