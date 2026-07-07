@@ -2,7 +2,7 @@
 import pyray as pr
 import asyncio
 import platform
-from math import sqrt, sin,pi
+from math import sqrt, sin, pi
 
 import bitflags as Bitflags
 import input_config as Inputs
@@ -449,8 +449,57 @@ def limit_lives(player_lives):
     if player_lives > 3:
         print("limiting player lives to 3")
         player_lives = 3
+    
+    if player_lives < 0:
+        player_lives = 0
 
     return player_lives
+
+def dead_alpha(title_alpha):
+    #print(title_alpha)
+    if title_alpha < 255:
+        title_alpha += 1
+
+    return title_alpha
+
+def draw_dead_menu(screen_w,screen_h,font,title_alpha):
+
+    #DRAW INSTRUCTION
+
+    pr.draw_text_ex(font,
+                    "Press Enter to resuscitate",
+                    pr.Vector2(200+100,250+200),
+                    50,5,
+                    pr.Color(180,180,120,255)
+                    )
+
+    #DRAW TITLE
+
+    pr.draw_text_ex(font,
+                    "To die unprepared.\n In a state of sin...",
+                    pr.Vector2(200-3,250-3),
+                    100,10,
+                    pr.Color(5,0,0,title_alpha))
+
+    pr.draw_text_ex(font,
+                    "To die unprepared.\n In a state of sin...",
+                    pr.Vector2(200,250),
+                    100,10,
+                    pr.Color(255,10,30,title_alpha))
+        
+
+def debug_remove_life(player_lives):
+
+    if pr.is_key_pressed(pr.KEY_T):
+        player_lives -= 1
+
+    return player_lives
+
+def check_lives(player_lives,player):
+    if not player_lives:
+        player = deactivate(player,Bitflags.State.ALIVE)
+
+    return player
 
 async def main():
 
@@ -481,7 +530,7 @@ async def main():
     
     mirror = 1
 
-    player_lives = 1
+    player_lives = 2
     player_speed = 2.5
     player_pos = (50,50)
     player_size = 16
@@ -498,6 +547,8 @@ async def main():
     load_static_sprites(Collectables.TOTAL_SPRITES)
     load_static_sprites(HUD.TOTAL_SPRITES)
     font1 = pr.load_font(fonts.medieval_font["file"])
+
+    dead_title_alpha = 0
     
     #SPAWN COLLECTABLES
     spawn_collectable(Collectables.pup_sword,
@@ -518,19 +569,8 @@ async def main():
 
     spawn_collectable(Collectables.pup_heart,
                  collectables_list,
-                 (700+60,200))
+                 (700,200))
 
-    spawn_collectable(Collectables.pup_heart,
-                 collectables_list,
-                 (700,200+50))
-
-    spawn_collectable(Collectables.pup_heart,
-                 collectables_list,
-                 (700+30,200))
-
-    #CHANGE FOR AN ACTUAL GUI INVENTORY
-    print("do you have sword: ",evaluate(player,Bitflags.Inventory.SWORD))
-    print("Are you Alive? ",evaluate(player,Bitflags.State.ALIVE))
 
     while not pr.window_should_close():
 
@@ -539,18 +579,27 @@ async def main():
         floaty_collectibles(collectables_list,delta,0.2)
 
         debug = debug_toggle(debug)
-        controls = player_input(controls)
-        mirror = mirror_sprite(controls,mirror)
-        player_lives = limit_lives(player_lives)
+        player_lives = debug_remove_life(player_lives)
+
+        player_lives = limit_lives(player_lives) #lives limiting only
+        player = check_lives(player_lives,player)
+
+        if evaluate(player,Bitflags.State.ALIVE):
+            controls = player_input(controls)
+            mirror = mirror_sprite(controls,mirror)
+        else:
+            dead_title_alpha = dead_alpha(dead_title_alpha)
         
         player_pos = (player_pos[0]+update_player_pos(controls,player_speed)[0], 
                       player_pos[1]+update_player_pos(controls,player_speed)[1])
+
         player_rect = pr.Rectangle(player_pos[0],
                                    player_pos[1],
                                    player_size*scaling,
                                    player_size*scaling)
 
         player_sprite = select_player_sprite(controls)
+        #print("lives:", player_lives)
 
         #COLLISION LOGIC
         player, player_lives = collectable_collision(player,player_rect,collectables_list,player_lives)
@@ -568,20 +617,21 @@ async def main():
                             (0,0),
                             0,
                             pr.Color(100,100,100,255))
+
         #RENDER COLLECTABLES
         draw_collectables(collectables_list)
 
         #RENDER PLAYER
         animate_draw_sprite(player_sprite,player_pos[0],player_pos[1],controls,mirror)
 
-        #GUI TEXT
-        #pr.draw_text("Bit Wizard", 30, 30, 20, pr.VIOLET)
-        pr.draw_text(f"Press O for debug data", 30, 50, 20, pr.DARKGREEN)
-
         #HUD RENDER duuuh!
         hud_render(player,WIDTH,HEIGHT,font1,game_title,player_lives)
+        pr.draw_text(f"Press O for debug data", 50, 680, 20, pr.GREEN)
 
+        #DEAD SCREEN
+        draw_dead_menu(WIDTH,HEIGHT,font1,dead_title_alpha)
 
+        #DEBUG INFO
         if debug:
             draw_player_collision(player_rect)
             draw_collectables_collisions(collectables_list)
