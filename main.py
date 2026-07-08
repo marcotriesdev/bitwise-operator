@@ -502,7 +502,7 @@ def debug_remove_life(player_lives):
 
 def revive_player(player,player_lives,title_alpha):
 
-    if pr.is_key_pressed(pr.KEY_R):
+    if title_alpha > 200 and pr.is_key_pressed(pr.KEY_R):
         player = activate(player,Bitflags.State.ALIVE)
         player_lives = 3
         title_alpha = 0
@@ -581,7 +581,7 @@ async def main():
 
     while not pr.window_should_close():
 
-        #LOGIC:
+        #LOGIC
         delta = delta_process(delta)
 
         floaty_collectibles(collectables_list,delta,0.2)
@@ -592,6 +592,7 @@ async def main():
         player_lives = limit_lives(player_lives) #lives limiting only
         player = check_lives(player_lives,player)
 
+        #EVALUATE IF PLAYER IS DEAD OR NOT. DEATH TITLE MENU PLAYS HERE
         if evaluate(player,Bitflags.State.ALIVE):
             controls = player_input(controls)
             mirror = mirror_sprite(controls,mirror)
@@ -599,7 +600,7 @@ async def main():
             controls = 0b0
             dead_title_alpha, dead_title_counter = dead_alpha(dead_title_alpha,
                                                               dead_title_counter,
-                                                              deat_title_speed)
+                                                              deat_title_speed)    
 
             player, player_lives, dead_title_alpha = revive_player(player,
                                                                    player_lives,
