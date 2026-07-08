@@ -515,6 +515,12 @@ def check_lives(player_lives,player):
 
     return player
 
+def spawn_bulk_collectables(object_list,*args):
+
+    for item_tuple in args:
+        #                collect enum, object_list, positions     
+        spawn_collectable(item_tuple[0],object_list,item_tuple[1])
+
 async def main():
 
     web_resizing_test()
@@ -564,25 +570,14 @@ async def main():
     deat_title_speed = 3
     
     #SPAWN COLLECTABLES
-    spawn_collectable(Collectables.pup_sword,
-                collectables_list,
-                (250,250))
 
-    spawn_collectable(Collectables.pup_potion,
-                 collectables_list,
-                (350,420))
-
-    spawn_collectable(Collectables.pup_wand,
-                 collectables_list,
-                (150,520))
-
-    spawn_collectable(Collectables.pup_shield,
-                 collectables_list,
-                (650,620))    
-
-    spawn_collectable(Collectables.pup_heart,
-                 collectables_list,
-                 (700,200))
+    spawn_bulk_collectables(collectables_list,
+                            (Collectables.pup_sword,(250,250)),
+                            (Collectables.pup_potion,(350,420)),
+                            (Collectables.pup_wand,(150,520)),
+                            (Collectables.pup_shield,(650,620)),
+                            (Collectables.pup_heart,(700,200))
+                            )
 
     while not pr.window_should_close():
 
