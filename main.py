@@ -455,23 +455,29 @@ def limit_lives(player_lives):
 
     return player_lives
 
-def dead_alpha(title_alpha):
+def dead_alpha(title_alpha,counter,title_speed):
     #print(title_alpha)
-    if title_alpha < 255:
-        title_alpha += 1
+    if counter < title_speed:
+        counter += 1
+    else:
+        counter = 1
+        if title_alpha < 255:
+            title_alpha += 1
 
-    return title_alpha
+    #print(counter)
+    return title_alpha, counter
 
 def draw_dead_menu(screen_w,screen_h,font,title_alpha):
 
     #DRAW INSTRUCTION
 
-    pr.draw_text_ex(font,
-                    "Press Enter to resuscitate",
-                    pr.Vector2(200+100,250+200),
-                    50,5,
-                    pr.Color(180,180,120,255)
-                    )
+    if title_alpha > 130:
+        pr.draw_text_ex(font,
+                        "Press <R> to resuscitate",
+                        pr.Vector2(200+150,250+200),
+                        50,5,
+                        pr.Color(180,180,120,255)
+                        )
 
     #DRAW TITLE
 
@@ -487,13 +493,21 @@ def draw_dead_menu(screen_w,screen_h,font,title_alpha):
                     100,10,
                     pr.Color(255,10,30,title_alpha))
         
-
 def debug_remove_life(player_lives):
 
     if pr.is_key_pressed(pr.KEY_T):
         player_lives -= 1
 
     return player_lives
+
+def revive_player(player,player_lives,title_alpha):
+
+    if pr.is_key_pressed(pr.KEY_R):
+        player = activate(player,Bitflags.State.ALIVE)
+        player_lives = 3
+        title_alpha = 0
+
+    return player, player_lives, title_alpha
 
 def check_lives(player_lives,player):
     if not player_lives:
@@ -520,14 +534,11 @@ async def main():
 
     pr.init_window(WIDTH, HEIGHT, "Bit Wizard")    
 
-    #offset = 0
-
     debug = False
     controls = 0b0000   #init controller
     player = 0b00000000 #init player state and inventory in one byte
     player = activate(player,Bitflags.State.ALIVE)
 
-    
     mirror = 1
 
     player_lives = 2
@@ -549,6 +560,8 @@ async def main():
     font1 = pr.load_font(fonts.medieval_font["file"])
 
     dead_title_alpha = 0
+    dead_title_counter = 1
+    deat_title_speed = 3
     
     #SPAWN COLLECTABLES
     spawn_collectable(Collectables.pup_sword,
@@ -571,11 +584,11 @@ async def main():
                  collectables_list,
                  (700,200))
 
-
     while not pr.window_should_close():
 
         #LOGIC:
         delta = delta_process(delta)
+
         floaty_collectibles(collectables_list,delta,0.2)
 
         debug = debug_toggle(debug)
@@ -588,7 +601,14 @@ async def main():
             controls = player_input(controls)
             mirror = mirror_sprite(controls,mirror)
         else:
-            dead_title_alpha = dead_alpha(dead_title_alpha)
+            controls = 0b0
+            dead_title_alpha, dead_title_counter = dead_alpha(dead_title_alpha,
+                                                              dead_title_counter,
+                                                              deat_title_speed)
+
+            player, player_lives, dead_title_alpha = revive_player(player,
+                                                                   player_lives,
+                                                                   dead_title_alpha)
         
         player_pos = (player_pos[0]+update_player_pos(controls,player_speed)[0], 
                       player_pos[1]+update_player_pos(controls,player_speed)[1])
@@ -609,7 +629,6 @@ async def main():
         pr.clear_background(pr.WHITE)
         
         #RENDER BACKGROUND
-        #offset += 1
         pr.draw_texture_pro(background1,
                             pr.Rectangle(0,0,WIDTH,HEIGHT),
                             pr.Rectangle(0,0,WIDTH*(bgscaling),
