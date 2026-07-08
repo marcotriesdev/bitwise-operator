@@ -141,25 +141,30 @@ def draw_sprite(spritesheet,rect,posx,posy):
     
 def animate_draw_sprite(resource,posx,posy,controls,mirror):
     
-    if resource["counter"] < resource["time"][resource["current_time"]]:
-        print(resource["time"][resource["current_time"]])
-        if resource["time"][resource["current_time"]] != 1:
+    if resource["counter"] < resource["time"][resource["current_frame"]]:
+        print(resource["time"][resource["current_frame"]])
+        if resource["time"][resource["current_frame"]] != 1:
             print("rolling animacion")
             resource["counter"] += 1
         else:
             print("paused animation")
-            print(resource["time"][resource["current_time"]])
+            print(resource["time"][resource["current_frame"]])
             resource["counter"] += 0
     else:
         resource["counter"] = 0
-        if resource["current_time"] + 1 < len(resource["time"]):
-            resource["current_time"] += 1 
+        if resource["current_frame"] + 1 < len(resource["time"]):
+            resource["current_frame"] += 1 
         else:
-            resource["current_time"] = 0
+            resource["current_frame"] = 0
     
-    rect = pr.Rectangle(resource["current_time"]*16,0,16*mirror_sprite(controls,mirror),16)
+    rect = pr.Rectangle(resource["current_frame"]*16,0,16*mirror_sprite(controls,mirror),16)
 
     draw_sprite(resource["spritesheet"],rect,posx,posy)
+
+def reset_animation(animation):
+
+    if animation["current_frame"] != 0:
+        animation["current_frame"] = 0
 
 def load_animations(animation_list):
 
@@ -501,8 +506,9 @@ def draw_dead_menu(screen_w,screen_h,font,title_alpha):
                     100,10,
                     pr.Color(255,10,30,title_alpha))
         
-def debug_remove_life(player_lives):
+def player_take_damage(player_lives):
 
+    #USEFUL ONLY FOR DEBUGGIN'
     if pr.is_key_pressed(pr.KEY_T):
         player_lives -= 1
 
@@ -510,7 +516,7 @@ def debug_remove_life(player_lives):
 
 def revive_player(player,player_lives,title_alpha):
 
-    if title_alpha > 200 and pr.is_key_pressed(pr.KEY_R):
+    if title_alpha > 140 and pr.is_key_pressed(pr.KEY_R):
         player = activate(player,Bitflags.State.ALIVE)
         player_lives = 3
         title_alpha = 0
@@ -596,7 +602,7 @@ async def main():
         floaty_collectibles(collectables_list,delta,0.2)
 
         debug = debug_toggle(debug)
-        player_lives = debug_remove_life(player_lives)
+        player_lives = player_take_damage(player_lives)
 
         player_lives = limit_lives(player_lives) #lives limiting only
         player = check_lives(player_lives,player)
@@ -605,6 +611,7 @@ async def main():
         if evaluate(player,Bitflags.State.ALIVE):
             controls = player_input(controls)
             mirror = mirror_sprite(controls,mirror)
+            reset_animation(Animation.wizard_death)
         else:
             controls = 0b0
             dead_title_alpha, dead_title_counter = dead_alpha(dead_title_alpha,
@@ -694,7 +701,7 @@ async def main():
                         20, 
                         pr.VIOLET)
 
-            pr.draw_text(("Current frame: " + str(player_sprite["current_time"])), 
+            pr.draw_text(("Current frame: " + str(player_sprite["current_frame"])), 
                         debug_window_x,debug_window_y+(debug_margin_text*5), 
                         20, 
                         pr.VIOLET)
