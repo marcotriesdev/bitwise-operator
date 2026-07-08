@@ -9,7 +9,13 @@ wizard_idle = {"spritesheet":  "sprites/bit_idle.png",
                 "counter": 0  ,
                 "current_time": 0 ,
                 "id": "idle"}                
- 
+
+wizard_death = {"spritesheet":  "sprites/bit_die.png",
+                "time"      : [30,35,30,30,20,1],
+                "counter": 0  ,
+                "current_time": 0 ,
+                "id": "death"}         
+
 shield = {"spritesheet": "sprites/bit_shield.png",
                 "time"      : [30],
                 "counter": 0   ,
@@ -41,4 +47,6 @@ wand = {"spritesheet":  "sprites/bit_wand.png",
                 "current_time": 0,
                 "id": "wand idle"}       
 
-TOTAL_ANIMATIONS = [wizard_walk,wizard_idle,shield,sword,sword_atk,wand_atk,wand]
+
+
+TOTAL_ANIMATIONS = [wizard_walk,wizard_idle,wizard_death,shield,sword,sword_atk,wand_atk,wand]

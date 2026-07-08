@@ -13,7 +13,7 @@ import hud_sprites as HUD
 import backgrounds as bg
 import fonts 
 
-scaling = 7
+scaling = 6
 hud_scaling = scaling * 0.6
 bgscaling = scaling * 0.6
 item_scaling = scaling * 0.5
@@ -141,16 +141,21 @@ def draw_sprite(spritesheet,rect,posx,posy):
     
 def animate_draw_sprite(resource,posx,posy,controls,mirror):
     
-    
     if resource["counter"] < resource["time"][resource["current_time"]]:
-        resource["counter"] += 1
+        print(resource["time"][resource["current_time"]])
+        if resource["time"][resource["current_time"]] != 1:
+            print("rolling animacion")
+            resource["counter"] += 1
+        else:
+            print("paused animation")
+            print(resource["time"][resource["current_time"]])
+            resource["counter"] += 0
     else:
         resource["counter"] = 0
         if resource["current_time"] + 1 < len(resource["time"]):
             resource["current_time"] += 1 
         else:
             resource["current_time"] = 0
-
     
     rect = pr.Rectangle(resource["current_time"]*16,0,16*mirror_sprite(controls,mirror),16)
 
@@ -195,16 +200,19 @@ def unload_static_sprites(sprite_list):
             print("unloaded sprite successfully: ",item)
             pr.unload_texture(item["file"])
             
-def select_player_sprite(controls):
+def select_player_sprite(controls,player):
 
+    if evaluate(player,Bitflags.State.ALIVE):
+        if controls:
 
-    if controls:
+            sprite  = Animation.wizard_walk
 
-        sprite  = Animation.wizard_walk
+        else:
+
+            sprite = Animation.wizard_idle
 
     else:
-
-        sprite = Animation.wizard_idle
+        sprite = Animation.wizard_death
 
     return sprite
 
@@ -521,6 +529,7 @@ def spawn_bulk_collectables(object_list,*args):
         #                collect enum, object_list, positions     
         spawn_collectable(item_tuple[0],object_list,item_tuple[1])
 
+
 async def main():
 
     web_resizing_test()
@@ -614,7 +623,7 @@ async def main():
                                    player_size*scaling,
                                    player_size*scaling)
 
-        player_sprite = select_player_sprite(controls)
+        player_sprite = select_player_sprite(controls,player)
         #print("lives:", player_lives)
 
         #COLLISION LOGIC
