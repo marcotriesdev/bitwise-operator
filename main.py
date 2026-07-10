@@ -15,8 +15,8 @@ import fonts
 
 scaling = 6
 hud_scaling = scaling * 0.6
-bgscaling = scaling * 0.6
-item_scaling = scaling * 0.5
+bgscaling = scaling * 0.7
+item_scaling = scaling * 0.7
 pr.VIOLET = pr.Color(240,180,220,255)
 
 shadow_color = pr.Color(2,2,2,200)
@@ -142,13 +142,13 @@ def draw_sprite(spritesheet,rect,posx,posy):
 def animate_draw_sprite(resource,posx,posy,controls,mirror):
     
     if resource["counter"] < resource["time"][resource["current_frame"]]:
-        print(resource["time"][resource["current_frame"]])
+        #print(resource["time"][resource["current_frame"]])
         if resource["time"][resource["current_frame"]] != 1:
-            print("rolling animacion")
+            #print("rolling animacion")
             resource["counter"] += 1
         else:
-            print("paused animation")
-            print(resource["time"][resource["current_frame"]])
+            #print("paused animation")
+            #print(resource["time"][resource["current_frame"]])
             resource["counter"] += 0
     else:
         resource["counter"] = 0
@@ -267,7 +267,7 @@ def draw_collectables(item_list):
                             0,
                             pr.WHITE)
 
-def collectable_collision(player,player_rect,item_list,player_lives):
+def collectable_collision(player,player_rect,item_list,player_lives,max_lives):
 
     for item in item_list:
         if pr.check_collision_recs(player_rect,item["rect"]):
@@ -278,10 +278,11 @@ def collectable_collision(player,player_rect,item_list,player_lives):
                     print("removing item from collectables item")
                     item_list.remove(item) 
             else:
-                print("got a lil heart pickup for you!")
-                player_lives += 1
-                item_list.remove(item)
-                print("removed heart pickup from the world")
+
+                if (player_lives < max_lives): player_lives += 1; print("pickup heart"); item_list.remove(item)
+                else: print("max hearts reached")
+
+                
 
                 
     return player, player_lives
@@ -456,7 +457,7 @@ def hud_render(player,screen_width,screen_height,font,game_title,hearts):
                     60,
                     2,
                     title_color)
-
+#DEPRECATED:
 def limit_lives(player_lives):
 
     if player_lives > 3:
@@ -563,6 +564,7 @@ async def main():
     mirror = 1
 
     player_lives = 2
+    player_max_lives = 3
     player_speed = 2.5
     player_pos = (50,50)
     player_size = 16
@@ -604,7 +606,6 @@ async def main():
         debug = debug_toggle(debug)
         player_lives = player_take_damage(player_lives)
 
-        player_lives = limit_lives(player_lives) #lives limiting only
         player = check_lives(player_lives,player)
 
         #EVALUATE IF PLAYER IS DEAD OR NOT. DEATH TITLE MENU PLAYS HERE
@@ -634,7 +635,7 @@ async def main():
         #print("lives:", player_lives)
 
         #COLLISION LOGIC
-        player, player_lives = collectable_collision(player,player_rect,collectables_list,player_lives)
+        player, player_lives = collectable_collision(player,player_rect,collectables_list,player_lives,player_max_lives)
 
         #RENDER
         pr.begin_drawing()
