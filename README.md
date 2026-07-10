@@ -5,4 +5,4 @@ The player input and core inventory are managed through bitwise operations to pr
 ## Screenshots:
 ![alt text](graphics_for_github/screen1.png)
 ### Death screen:
-![alt text](graphics_for_github/screen1.png)
+![alt text](graphics_for_github/screen2.png)
