@@ -316,7 +316,7 @@ def floaty_collectibles(item_list,delta,intensity):
     for item in item_list:
         item["locY"] += oscillator(delta)*intensity
 
-def hud_render(player,screen_width,screen_height,font,game_title,hearts):
+def hud_render(player,screen_width,screen_height,font,game_title,hearts,current_item):
     global hud_scaling
 
     hud_locX = screen_width*0.38
@@ -348,7 +348,7 @@ def hud_render(player,screen_width,screen_height,font,game_title,hearts):
 
     pr.draw_rectangle(0,0,screen_width,int(HUD.item_size*hud_scaling+5),frame_color)
 
-    #EMPTY SPRITE
+    #EMPTY SPRITE 
     for i in range(4):
         offset = HUD.item_size * i
         pr.draw_texture_pro(HUD.hud_empty["file"],
@@ -361,7 +361,7 @@ def hud_render(player,screen_width,screen_height,font,game_title,hearts):
                             0.0,
                             empty_hud_color)
 
-        #ITEM SPRITE                        #the +1 offset to the index is to skip the empty inventory sprite
+        #ITEM SPRITE                        the +1 offset to the index is to skip the empty inventory sprite      
         if evaluate(player,HUD.TOTAL_SPRITES[i+1]["bitflag"]):
             pr.draw_texture_pro(HUD.TOTAL_SPRITES[i+1]["file"],
                                 pr.Rectangle(0,0,HUD.item_size,HUD.item_size),
@@ -369,6 +369,17 @@ def hud_render(player,screen_width,screen_height,font,game_title,hearts):
                                              hud_locY,
                                              (HUD.item_size*hud_scaling),
                                              (HUD.item_size*hud_scaling)),
+                                pr.Vector2(0,0),
+                                0.0,
+                                pr.WHITE)
+        #SELECTOR SPRITE
+        if current_item == Bitflags.allItems[i+1]:
+            pr.draw_texture_pro(HUD.hud_selector["file"],
+                                pr.Rectangle(0,0,HUD.item_size,HUD.item_size),
+                                pr.Rectangle(hud_locX+(offset*hud_scaling),
+                                            hud_locY,
+                                            (HUD.item_size*hud_scaling),
+                                            (HUD.item_size*hud_scaling)),
                                 pr.Vector2(0,0),
                                 0.0,
                                 pr.WHITE)
@@ -457,6 +468,7 @@ def hud_render(player,screen_width,screen_height,font,game_title,hearts):
                     60,
                     2,
                     title_color)
+
 #DEPRECATED:
 def limit_lives(player_lives):
 
@@ -537,15 +549,16 @@ def spawn_bulk_collectables(object_list,*args):
         spawn_collectable(item_tuple[0],object_list,item_tuple[1])
 
 def animate_attack(current_item):
+    #static sprite and conditional bitwise operation for animation playing
     pass
 
-def select_item(current_item,player):
+def select_item(current_item):
 
     if any(pr.is_key_pressed(key) for key in Inputs.select):
-        if current_item + 1 < Bitflags.lastItem+1:
+        if current_item + 1 < Bitflags.firstItem+1:
             current_item += 1
         else:
-            current_item = Bitflags.firstItem
+            current_item = Bitflags.lastItem
 
     return current_item
 
@@ -579,7 +592,7 @@ async def main():
 
     player_lives = 2
     player_max_lives = 3
-    player_active_item = Bitflags.Inventory.SWORD
+    player_active_item = Bitflags.Inventory.EMPTY
     player_speed = 2.5
     player_pos = (50,50)
     player_size = 16
@@ -622,7 +635,7 @@ async def main():
         player_lives = player_take_damage(player_lives)
 
         player = check_lives(player_lives,player)
-        player_active_item = select_item(player_active_item,player)
+        player_active_item = select_item(player_active_item)
 
         #EVALUATE IF PLAYER IS DEAD OR NOT. DEATH TITLE MENU PLAYS HERE
         if evaluate(player,Bitflags.State.ALIVE):
@@ -673,7 +686,7 @@ async def main():
         animate_draw_sprite(player_sprite,player_pos[0],player_pos[1],controls,mirror)
 
         #HUD RENDER duuuh!
-        hud_render(player,WIDTH,HEIGHT,font1,game_title,player_lives)
+        hud_render(player,WIDTH,HEIGHT,font1,game_title,player_lives,player_active_item)
         pr.draw_text(f"Press O for debug data", 50, 680, 20, pr.GREEN)
 
         #DEAD SCREEN

@@ -14,8 +14,13 @@ class Inventory(IntFlag):
     WAND   = 6
     EMPTY  = 7
 
-lastItem  = Inventory.EMPTY
-firstItem = Inventory.SHIELD 
+lastItem  = Inventory.SHIELD 
+firstItem = Inventory.EMPTY
+allItems = (Inventory.EMPTY,
+            Inventory.SHIELD,
+            Inventory.SWORD,
+            Inventory.POTION,
+            Inventory.WAND)
 
 class Controller(IntFlag):
 

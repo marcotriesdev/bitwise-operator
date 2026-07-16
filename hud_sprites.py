@@ -25,12 +25,18 @@ hud_heart = {"id": "hud heart",
             "bitflag": None
             }
 
+hud_selector ={"id": "hud selector",
+            "file": "sprites/selector.png",
+            "bitflag": None
+            }
 item_size = 16 #the square size of the sprites
 
                 #never move hud_empty from index 0 or it will break rendering hehe
+                #always add to the list when adding a new graphic
 TOTAL_SPRITES = [hud_empty,
                 hud_sword,
                 hud_shield,
                 hud_wand,
                 hud_potion,
-                hud_heart]
+                hud_heart,
+                hud_selector]
