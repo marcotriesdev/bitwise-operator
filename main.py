@@ -23,7 +23,7 @@ shadow_color = pr.Color(2,2,2,200)
 empty_hud_color = pr.Color(100,100,75,255)
 collision_color = pr.Color(50,50,200,180)
 
-current_object = Bitflags.Inventory.EMPTY
+
 
 def web_resizing_test():
     try:
@@ -536,6 +536,20 @@ def spawn_bulk_collectables(object_list,*args):
         #                collect enum, object_list, positions     
         spawn_collectable(item_tuple[0],object_list,item_tuple[1])
 
+def animate_attack(current_item):
+    pass
+
+def select_item(current_item,player):
+
+    if any(pr.is_key_pressed(key) for key in Inputs.select):
+        if current_item + 1 < Bitflags.lastItem+1:
+            current_item += 1
+        else:
+            current_item = Bitflags.firstItem
+
+    return current_item
+
+
 
 async def main():
 
@@ -565,6 +579,7 @@ async def main():
 
     player_lives = 2
     player_max_lives = 3
+    player_active_item = Bitflags.Inventory.SWORD
     player_speed = 2.5
     player_pos = (50,50)
     player_size = 16
@@ -607,6 +622,7 @@ async def main():
         player_lives = player_take_damage(player_lives)
 
         player = check_lives(player_lives,player)
+        player_active_item = select_item(player_active_item,player)
 
         #EVALUATE IF PLAYER IS DEAD OR NOT. DEATH TITLE MENU PLAYS HERE
         if evaluate(player,Bitflags.State.ALIVE):
@@ -706,6 +722,10 @@ async def main():
                         debug_window_x,debug_window_y+(debug_margin_text*5), 
                         20, 
                         pr.VIOLET)
+            pr.draw_text(f"Player active Item: {player_active_item}",
+                         debug_window_x,debug_window_y+(debug_margin_text*6),
+                         20,
+                         pr.VIOLET)
 
         pr.end_drawing()
         await asyncio.sleep(0)

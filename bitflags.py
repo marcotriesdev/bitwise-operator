@@ -14,6 +14,9 @@ class Inventory(IntFlag):
     WAND   = 6
     EMPTY  = 7
 
+lastItem  = Inventory.EMPTY
+firstItem = Inventory.SHIELD 
+
 class Controller(IntFlag):
 
     UP     = 0
