@@ -27,13 +27,13 @@ shield_atk = {"spritesheet": "sprites/bit_shield.png",
 
 
 sword_atk = {"spritesheet":  "sprites/bit_sword.png",
-                "time"      : [15,18,10],
+                "time"      : [15,18,15],
                 "counter": 0  ,
                 "current_frame": 0  ,
                 "id": "sword attack",
                 "bitflag":Inventory.SWORD} 
 potion_atk = {"spritesheet":  "sprites/bit_potion.png",
-                "time"      : [15],
+                "time"      : [15,30],
                 "counter": 0   ,
                 "current_frame": 0,
                 "id": "potion use",

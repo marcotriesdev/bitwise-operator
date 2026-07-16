@@ -71,7 +71,7 @@ def player_input(controls,player):
         and not any(pr.is_key_down(key2) for key2 in Inputs.move_R)):
         controls |= 1 << Bitflags.Controller.LEFT
 
-    if (any(pr.is_key_pressed(key) for key in Inputs.attack)):
+    if (any(pr.is_key_down(key) for key in Inputs.attack)):
         player = activate(player,Bitflags.State.ATTK)
 
 
@@ -87,6 +87,10 @@ def player_input(controls,player):
 
     if any(pr.is_key_released(key) for key in Inputs.move_R):
         controls &= ~(1<<Bitflags.Controller.RIGHT)        
+
+    if any(pr.is_key_released(key) for key in Inputs.attack):
+        player &= ~(1<<Bitflags.State.ATTK)        
+
 
     return controls, player
 
@@ -169,7 +173,6 @@ def animate_sprite(resource,posx,posy,controls,mirror):
 
     return rect
     
-
 def reset_animation(animation):
 
     if animation["current_frame"] != 0:
@@ -561,19 +564,29 @@ def draw_active_item(current_item,player_position,controls,mirror,player):
     global scaling
     #This is currently not very data driven of me but a mere ducktaped answer to unorganized data.
     sprite = None 
+    animated_sprite = None
 
     match current_item:
 
         case Bitflags.Inventory.SHIELD:
             sprite = Animation.shield
+            animated_sprite = Animation.shield_atk
+
         case Bitflags.Inventory.SWORD:
             sprite = Animation.sword
+            animated_sprite = Animation.sword_atk
+
         case Bitflags.Inventory.POTION:
-            sprite = Animation.potion   
+            sprite = Animation.potion
+            animated_sprite = Animation.potion_atk  
+
         case Bitflags.Inventory.WAND:
             sprite = Animation.wand
+            animated_sprite = Animation.wand_atk
+
         case Bitflags.Inventory.EMPTY:
             sprite = None
+            animated_sprite = None
 
     if sprite != None and evaluate(player,sprite["bitflag"]):
         if not evaluate(player,Bitflags.State.ATTK):
@@ -585,7 +598,16 @@ def draw_active_item(current_item,player_position,controls,mirror,player):
                                 pr.WHITE
                                 )
         else:
-            pass
+            pr.draw_texture_pro(animated_sprite["spritesheet"],
+                                animate_sprite(animated_sprite,
+                                               player_position[0],
+                                               player_position[1],
+                                               controls,mirror),
+                                pr.Rectangle(player_position[0],player_position[1],Animation.item_size*scaling,Animation.item_size*scaling),
+                                pr.Vector2(0,0),
+                                0.0,
+                                pr.WHITE
+                                )
 
 def select_item(current_item):
 
