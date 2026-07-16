@@ -48,7 +48,7 @@ def evaluate(player,object):
      
     return bool(player & 1 << object)
 
-def player_input(controls):
+def player_input(controls,player):
 
 
     #PRESS KEYS
@@ -71,6 +71,8 @@ def player_input(controls):
         and not any(pr.is_key_down(key2) for key2 in Inputs.move_R)):
         controls |= 1 << Bitflags.Controller.LEFT
 
+    if (any(pr.is_key_pressed(key) for key in Inputs.attack)):
+        player = activate(player,Bitflags.State.ATTK)
 
 
     #RELEASE KEYS
@@ -86,7 +88,7 @@ def player_input(controls):
     if any(pr.is_key_released(key) for key in Inputs.move_R):
         controls &= ~(1<<Bitflags.Controller.RIGHT)        
 
-    return controls
+    return controls, player
 
 def update_player_pos(controls,player_speed):
 
@@ -139,22 +141,25 @@ def draw_sprite(spritesheet,rect,posx,posy):
                         0,
                         pr.WHITE)
     
-def animate_draw_sprite(resource,posx,posy,controls,mirror):
+def animate_sprite(resource,posx,posy,controls,mirror):
     
+    #SUM 1+ TO COUNTER BASED ON CURRENT FRAME LIMIT INSIDE OF "TIME" ARRAY OF FRAMES
     if resource["counter"] < resource["time"][resource["current_frame"]]:
-        #print(resource["time"][resource["current_frame"]])
+        #STOP IF THE CURRENT FRAME IS 1 FOR NON LOOPING ANIMATION
         if resource["time"][resource["current_frame"]] != 1:
-            #print("rolling animacion")
+            
             resource["counter"] += 1
         else:
-            #print("paused animation")
-            #print(resource["time"][resource["current_frame"]])
+            #SUM 0 IF THE CURRENT FRAME IS 1 SO ANIMATION STOPS, USED FOR NON LOOPING ANIMATIONS
             resource["counter"] += 0
     else:
+        #COUNTER REACHES 0 IF IT REACHES THE CURRENT FRAME LIMIT 
         resource["counter"] = 0
+        #ADVANCE THE CURRENT FRAME INDEX WHEN THE COUNTER REACHES MAXIMUM PREVIOUSLY
         if resource["current_frame"] + 1 < len(resource["time"]):
             resource["current_frame"] += 1 
         else:
+            # RESTART THE ANIMATION
             resource["current_frame"] = 0
     
     rect = pr.Rectangle(resource["current_frame"]*16,
@@ -162,7 +167,8 @@ def animate_draw_sprite(resource,posx,posy,controls,mirror):
                         16*mirror_sprite(controls,mirror),
                         16)
 
-    draw_sprite(resource["spritesheet"],rect,posx,posy)
+    return rect
+    
 
 def reset_animation(animation):
 
@@ -570,13 +576,16 @@ def draw_active_item(current_item,player_position,controls,mirror,player):
             sprite = None
 
     if sprite != None and evaluate(player,sprite["bitflag"]):
-        pr.draw_texture_pro(sprite["spritesheet"],
-                            pr.Rectangle(0,0,Animation.item_size*mirror_sprite(controls,mirror),Animation.item_size),
-                            pr.Rectangle(player_position[0],player_position[1],Animation.item_size*scaling,Animation.item_size*scaling),
-                            pr.Vector2(0,0),
-                            0.0,
-                            pr.WHITE
-                            )
+        if not evaluate(player,Bitflags.State.ATTK):
+            pr.draw_texture_pro(sprite["spritesheet"],
+                                pr.Rectangle(0,0,Animation.item_size*mirror_sprite(controls,mirror),Animation.item_size),
+                                pr.Rectangle(player_position[0],player_position[1],Animation.item_size*scaling,Animation.item_size*scaling),
+                                pr.Vector2(0,0),
+                                0.0,
+                                pr.WHITE
+                                )
+        else:
+            pass
 
 def select_item(current_item):
 
@@ -665,7 +674,7 @@ async def main():
 
         #EVALUATE IF PLAYER IS DEAD OR NOT. DEATH TITLE MENU PLAYS HERE
         if evaluate(player,Bitflags.State.ALIVE):
-            controls = player_input(controls)
+            controls, player = player_input(controls,player)
             mirror = mirror_sprite(controls,mirror)
             reset_animation(Animation.wizard_death)
         else:
@@ -709,7 +718,11 @@ async def main():
         draw_collectables(collectables_list)
 
         #RENDER PLAYER
-        animate_draw_sprite(player_sprite,player_pos[0],player_pos[1],controls,mirror)
+        
+        draw_sprite(player_sprite["spritesheet"],
+                    animate_sprite(player_sprite,player_pos[0],player_pos[1],controls,mirror), #calculates current 
+                    player_pos[0],                                                             #animation frame     
+                    player_pos[1])
         #RENDER ACTIVE ITEM
         draw_active_item(player_active_item,player_pos,controls,mirror,player)
 
@@ -767,6 +780,10 @@ async def main():
                          debug_window_x,debug_window_y+(debug_margin_text*6),
                          20,
                          pr.VIOLET)
+            pr.draw_text(f"Attacking?: {bool(evaluate(player,Bitflags.State.ATTK))}",
+                         debug_window_x,debug_window_y+(debug_margin_text*7),
+                         20,
+                         pr.RED)
 
         pr.end_drawing()
         await asyncio.sleep(0)
