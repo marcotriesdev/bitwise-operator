@@ -551,7 +551,7 @@ def spawn_bulk_collectables(object_list,*args):
         #                collect enum, object_list, positions     
         spawn_collectable(item_tuple[0],object_list,item_tuple[1])
 
-def draw_active_item(current_item,player_position,controls,mirror):
+def draw_active_item(current_item,player_position,controls,mirror,player):
     global scaling
     #This is currently not very data driven of me but a mere ducktaped answer to unorganized data.
     sprite = None 
@@ -569,7 +569,7 @@ def draw_active_item(current_item,player_position,controls,mirror):
         case Bitflags.Inventory.EMPTY:
             sprite = None
 
-    if sprite != None:
+    if sprite != None and evaluate(player,sprite["bitflag"]):
         pr.draw_texture_pro(sprite["spritesheet"],
                             pr.Rectangle(0,0,Animation.item_size*mirror_sprite(controls,mirror),Animation.item_size),
                             pr.Rectangle(player_position[0],player_position[1],Animation.item_size*scaling,Animation.item_size*scaling),
@@ -587,7 +587,6 @@ def select_item(current_item):
             current_item = Bitflags.firstItem
 
     return current_item
-
 
 
 async def main():
@@ -711,7 +710,8 @@ async def main():
 
         #RENDER PLAYER
         animate_draw_sprite(player_sprite,player_pos[0],player_pos[1],controls,mirror)
-        draw_active_item(player_active_item,player_pos,controls,mirror)
+        #RENDER ACTIVE ITEM
+        draw_active_item(player_active_item,player_pos,controls,mirror,player)
 
         #HUD RENDER duuuh!
         hud_render(player,WIDTH,HEIGHT,font1,game_title,player_lives,player_active_item)

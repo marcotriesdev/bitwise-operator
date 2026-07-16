@@ -36,7 +36,7 @@ item_size = 16 #the square size of the sprites
 TOTAL_SPRITES = [hud_empty,
                 hud_shield,
                 hud_sword,
-                hud_wand,
                 hud_potion,
+                hud_wand,
                 hud_heart,
                 hud_selector]
