@@ -14,8 +14,8 @@ class Inventory(IntFlag):
     WAND   = 6
     EMPTY  = 7
 
-lastItem  = Inventory.SHIELD 
-firstItem = Inventory.EMPTY
+firstItem  = Inventory.SHIELD 
+emptyItem = Inventory.EMPTY
 allItems = (Inventory.EMPTY,
             Inventory.SHIELD,
             Inventory.SWORD,

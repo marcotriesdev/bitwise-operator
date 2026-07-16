@@ -157,7 +157,10 @@ def animate_draw_sprite(resource,posx,posy,controls,mirror):
         else:
             resource["current_frame"] = 0
     
-    rect = pr.Rectangle(resource["current_frame"]*16,0,16*mirror_sprite(controls,mirror),16)
+    rect = pr.Rectangle(resource["current_frame"]*16,
+                        0,
+                        16*mirror_sprite(controls,mirror),
+                        16)
 
     draw_sprite(resource["spritesheet"],rect,posx,posy)
 
@@ -548,17 +551,40 @@ def spawn_bulk_collectables(object_list,*args):
         #                collect enum, object_list, positions     
         spawn_collectable(item_tuple[0],object_list,item_tuple[1])
 
-def animate_attack(current_item):
-    #static sprite and conditional bitwise operation for animation playing
-    pass
+def draw_active_item(current_item,player_position,controls,mirror):
+    global scaling
+    #This is currently not very data driven of me but a mere ducktaped answer to unorganized data.
+    sprite = None 
+
+    match current_item:
+
+        case Bitflags.Inventory.SHIELD:
+            sprite = Animation.shield
+        case Bitflags.Inventory.SWORD:
+            sprite = Animation.sword
+        case Bitflags.Inventory.POTION:
+            sprite = Animation.potion   
+        case Bitflags.Inventory.WAND:
+            sprite = Animation.wand
+        case Bitflags.Inventory.EMPTY:
+            sprite = None
+
+    if sprite != None:
+        pr.draw_texture_pro(sprite["spritesheet"],
+                            pr.Rectangle(0,0,Animation.item_size*mirror_sprite(controls,mirror),Animation.item_size),
+                            pr.Rectangle(player_position[0],player_position[1],Animation.item_size*scaling,Animation.item_size*scaling),
+                            pr.Vector2(0,0),
+                            0.0,
+                            pr.WHITE
+                            )
 
 def select_item(current_item):
 
     if any(pr.is_key_pressed(key) for key in Inputs.select):
-        if current_item + 1 < Bitflags.firstItem+1:
+        if current_item + 1 < Bitflags.emptyItem+1:
             current_item += 1
         else:
-            current_item = Bitflags.lastItem
+            current_item = Bitflags.firstItem
 
     return current_item
 
@@ -606,6 +632,7 @@ async def main():
 
     background1 = load_background(bg.background_rocks)
     load_animations(Animation.TOTAL_ANIMATIONS)
+    load_animations(Animation.TOTAL_IDLE_ITEMS)
     load_static_sprites(Collectables.TOTAL_SPRITES)
     load_static_sprites(HUD.TOTAL_SPRITES)
     font1 = pr.load_font(fonts.medieval_font["file"])
@@ -684,6 +711,7 @@ async def main():
 
         #RENDER PLAYER
         animate_draw_sprite(player_sprite,player_pos[0],player_pos[1],controls,mirror)
+        draw_active_item(player_active_item,player_pos,controls,mirror)
 
         #HUD RENDER duuuh!
         hud_render(player,WIDTH,HEIGHT,font1,game_title,player_lives,player_active_item)

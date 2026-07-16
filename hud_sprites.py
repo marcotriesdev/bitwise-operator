@@ -34,8 +34,8 @@ item_size = 16 #the square size of the sprites
                 #never move hud_empty from index 0 or it will break rendering hehe
                 #always add to the list when adding a new graphic
 TOTAL_SPRITES = [hud_empty,
-                hud_sword,
                 hud_shield,
+                hud_sword,
                 hud_wand,
                 hud_potion,
                 hud_heart,
