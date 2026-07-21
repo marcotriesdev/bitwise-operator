@@ -23,7 +23,7 @@ shadow_color = pr.Color(2,2,2,200)
 empty_hud_color = pr.Color(100,100,75,255)
 collision_color = pr.Color(50,50,200,180)
 
-
+PLAYER_IFRAMES : int = 120
 
 def web_resizing_test():
     try:
@@ -71,7 +71,7 @@ def player_input(controls,player):
         and not any(pr.is_key_down(key2) for key2 in Inputs.move_R)):
         controls |= 1 << Bitflags.Controller.LEFT
 
-    if (any(pr.is_key_down(key) for key in Inputs.attack)):
+    if (any(pr.is_key_pressed(key) for key in Inputs.attack)):
         player = activate(player,Bitflags.State.ATTK)
 
 
@@ -611,20 +611,39 @@ def draw_active_item(current_item,player_position,controls,mirror,player):
                                 pr.Vector2(0,0),
                                 0.0,
                                 pr.WHITE)
+def iframes_countdown(player,iframes_timer):
 
-def defend_shield():
-    pass
+    if iframes_timer > 0:
+        iframes_timer -= 1
+    else:
+        iframes_timer = 0
+        if evaluate(player,Bitflags.State.DEFN):
+            player = deactivate(player,Bitflags.State.DEFN)
+
+    return iframes_timer, player
+
+
+def defend_shield(iframes_timer,player):
+    global PLAYER_IFRAMES
+
+    if not evaluate(player,Bitflags.State.DEFN):
+        iframes_timer = PLAYER_IFRAMES
+        player = activate(player,Bitflags.State.DEFN)
+
+
+    return iframes_timer, player
+
 def attack_sword():
     pass
 def attack_wand():
     pass
 
-def use_active_item(current_item,controls,mirror,player,player_lives):
+def use_active_item(current_item,controls,mirror,player,player_lives,iframes_timer):
 
     if evaluate(player,Bitflags.State.ATTK) and evaluate(player,current_item):
         match current_item:
             case Bitflags.Inventory.SHIELD:
-                defend_shield()
+                iframes_timer,player = defend_shield(iframes_timer,player)
             case Bitflags.Inventory.SWORD:
                 attack_sword()
             case Bitflags.Inventory.POTION:
@@ -633,7 +652,7 @@ def use_active_item(current_item,controls,mirror,player,player_lives):
             case Bitflags.Inventory.WAND:
                 attack_wand()
 
-    return player, player_lives
+    return player, player_lives, iframes_timer
 
 def select_item(current_item):
 
@@ -682,7 +701,14 @@ async def main():
                                player_pos[1],
                                player_size*scaling,
                                player_size*scaling)
+    player_weapon_hitbox = pr.Rectangle(player_pos[0],
+                                        player_pos[1],
+                                        0,
+                                        0)
+
     
+    iframes_timer = 0
+
     collectables_list = []
     enemies_list      = [] #not implemented yet hehe!
 
@@ -716,10 +742,16 @@ async def main():
 
         debug = debug_toggle(debug)
         player_lives = player_take_damage(player_lives)
+        iframes_timer, player = iframes_countdown(player,iframes_timer)
 
         player = check_lives(player_lives,player)
         player_active_item = select_item(player_active_item)
-        player, player_lives = use_active_item(player_active_item,controls,mirror,player,player_lives) 
+        player, player_lives, iframes_timer = use_active_item(player_active_item, #activate item, attack or defend 
+                                                            controls,
+                                                            mirror,
+                                                            player,
+                                                            player_lives,
+                                                            iframes_timer)
 
         #EVALUATE IF PLAYER IS DEAD OR NOT. DEATH TITLE MENU PLAYS HERE
         if evaluate(player,Bitflags.State.ALIVE):
@@ -743,6 +775,7 @@ async def main():
                                    player_pos[1],
                                    player_size*scaling,
                                    player_size*scaling)
+        
 
         player_sprite = select_player_sprite(controls,player)
         #print("lives:", player_lives)
@@ -837,6 +870,14 @@ async def main():
                          20,
                          pr.RED)
 
+            pr.draw_text(f"Defending iframes: {str(iframes_timer)}",
+                         debug_window_x,debug_window_y+(debug_margin_text*8),
+                         20,
+                         pr.RED)            
+            pr.draw_text(f"Defending BITMASK: {bool(evaluate(player,Bitflags.State.DEFN))}",
+                         debug_window_x,debug_window_y+(debug_margin_text*9),
+                         20,
+                         pr.RED) 
         pr.end_drawing()
         await asyncio.sleep(0)
 
