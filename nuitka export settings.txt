@@ -1,0 +1,1 @@
+python -m nuitka --onefile --windows-console-mode=disable --include-data-dir=sprites=sprites --include-data-dir=backgrounds=backgrounds --include-data-dir=fonts=fonts main.py    

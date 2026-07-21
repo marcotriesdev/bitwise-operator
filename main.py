@@ -588,15 +588,16 @@ def draw_active_item(current_item,player_position,controls,mirror,player):
             sprite = None
             animated_sprite = None
 
-    if sprite != None and evaluate(player,sprite["bitflag"]):
-        if not evaluate(player,Bitflags.State.ATTK):
+    # Draw static item sprite when not attacking
+    if sprite != None and evaluate(player,sprite["bitflag"]): # if there's a sprite not empty and player bit has current item bitmask active
+        if not evaluate(player,Bitflags.State.ATTK):          # if not attacking
             pr.draw_texture_pro(sprite["spritesheet"],
                                 pr.Rectangle(0,0,Animation.item_size*mirror_sprite(controls,mirror),Animation.item_size),
                                 pr.Rectangle(player_position[0],player_position[1],Animation.item_size*scaling,Animation.item_size*scaling),
                                 pr.Vector2(0,0),
                                 0.0,
-                                pr.WHITE
-                                )
+                                pr.WHITE)
+        #Animate and draw the item animation       
         else:
             pr.draw_texture_pro(animated_sprite["spritesheet"],
                                 animate_sprite(animated_sprite,
@@ -606,8 +607,7 @@ def draw_active_item(current_item,player_position,controls,mirror,player):
                                 pr.Rectangle(player_position[0],player_position[1],Animation.item_size*scaling,Animation.item_size*scaling),
                                 pr.Vector2(0,0),
                                 0.0,
-                                pr.WHITE
-                                )
+                                pr.WHITE)
 
 def select_item(current_item):
 
@@ -650,7 +650,7 @@ async def main():
     player_max_lives = 3
     player_active_item = Bitflags.Inventory.EMPTY
     player_speed = 2.5
-    player_pos = (50,50)
+    player_pos = (250,250)
     player_size = 16
     player_rect = pr.Rectangle(player_pos[0],
                                player_pos[1],
@@ -674,7 +674,7 @@ async def main():
     #SPAWN COLLECTABLES
 
     spawn_bulk_collectables(collectables_list,
-                            (Collectables.pup_sword,(250,250)),
+                            (Collectables.pup_sword,(350,250)),
                             (Collectables.pup_potion,(350,420)),
                             (Collectables.pup_wand,(150,520)),
                             (Collectables.pup_shield,(650,620)),
@@ -751,6 +751,9 @@ async def main():
         #HUD RENDER duuuh!
         hud_render(player,WIDTH,HEIGHT,font1,game_title,player_lives,player_active_item)
         pr.draw_text(f"Press O for debug data", 50, 680, 20, pr.GREEN)
+        pr.draw_text(f"WASD OR ARROWS TO MOVE", 50, 70, 20, pr.GREEN)
+        pr.draw_text(f"PICKUP STUFF, SELECT WITH SHIFT KEY", 50, 90, 20, pr.GREEN)
+        pr.draw_text(f"AND ATTACK WITH SPACE KEY", 50, 110, 20, pr.GREEN)
 
         #DEAD SCREEN
         draw_dead_menu(WIDTH,HEIGHT,font1,dead_title_alpha)
