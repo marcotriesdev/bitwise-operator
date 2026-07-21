@@ -3,7 +3,7 @@ from enum import IntFlag
 class State(IntFlag):
 
     ALIVE =  0
-    WALK  =  1
+    DEFN  =  1
     ATTK  =  2
 
 class Inventory(IntFlag):  

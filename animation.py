@@ -19,7 +19,7 @@ wizard_death = {"spritesheet":  "sprites/bit_die.png",
                 "id": "death"}         
 
 shield_atk = {"spritesheet": "sprites/bit_shield.png",
-                "time"      : [30,30],
+                "time"      : [5,30,1],
                 "counter": 0   ,
                 "current_frame": 0 ,
                 "id": "shield use",

@@ -589,16 +589,19 @@ def draw_active_item(current_item,player_position,controls,mirror,player):
             animated_sprite = None
 
     # Draw static item sprite when not attacking
-    if sprite != None and evaluate(player,sprite["bitflag"]): # if there's a sprite not empty and player bit has current item bitmask active
+    if sprite != None and evaluate(player,sprite["bitflag"]): # if there's a sprite not empty and player bit has current item 
         if not evaluate(player,Bitflags.State.ATTK):          # if not attacking
+            reset_animation(animated_sprite)
             pr.draw_texture_pro(sprite["spritesheet"],
                                 pr.Rectangle(0,0,Animation.item_size*mirror_sprite(controls,mirror),Animation.item_size),
                                 pr.Rectangle(player_position[0],player_position[1],Animation.item_size*scaling,Animation.item_size*scaling),
                                 pr.Vector2(0,0),
                                 0.0,
                                 pr.WHITE)
+
         #Animate and draw the item animation       
         else:
+            
             pr.draw_texture_pro(animated_sprite["spritesheet"],
                                 animate_sprite(animated_sprite,
                                                player_position[0],
@@ -608,6 +611,29 @@ def draw_active_item(current_item,player_position,controls,mirror,player):
                                 pr.Vector2(0,0),
                                 0.0,
                                 pr.WHITE)
+
+def defend_shield():
+    pass
+def attack_sword():
+    pass
+def attack_wand():
+    pass
+
+def use_active_item(current_item,controls,mirror,player,player_lives):
+
+    if evaluate(player,Bitflags.State.ATTK) and evaluate(player,current_item):
+        match current_item:
+            case Bitflags.Inventory.SHIELD:
+                defend_shield()
+            case Bitflags.Inventory.SWORD:
+                attack_sword()
+            case Bitflags.Inventory.POTION:
+                player_lives = 3
+                deactivate(player,Bitflags.Inventory.POTION)
+            case Bitflags.Inventory.WAND:
+                attack_wand()
+
+    return player, player_lives
 
 def select_item(current_item):
 
@@ -693,6 +719,7 @@ async def main():
 
         player = check_lives(player_lives,player)
         player_active_item = select_item(player_active_item)
+        player, player_lives = use_active_item(player_active_item,controls,mirror,player,player_lives) 
 
         #EVALUATE IF PLAYER IS DEAD OR NOT. DEATH TITLE MENU PLAYS HERE
         if evaluate(player,Bitflags.State.ALIVE):
