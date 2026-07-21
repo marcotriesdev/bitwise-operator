@@ -9,6 +9,7 @@ import input_config as Inputs
 
 import animation as Animation
 import collectables as Collectables
+import hitboxes as Hitbox
 import hud_sprites as HUD
 import backgrounds as bg
 import fonts 
@@ -23,7 +24,8 @@ shadow_color = pr.Color(2,2,2,200)
 empty_hud_color = pr.Color(100,100,75,255)
 collision_color = pr.Color(50,50,200,180)
 
-PLAYER_IFRAMES : int = 60
+PLAYER_IFRAMES : int = 60 #invincibility frames
+PLAYER_AFRAMES : int = 30 #attack frames
 
 def web_resizing_test():
     try:
@@ -299,10 +301,11 @@ def collectable_collision(player,player_rect,item_list,player_lives,max_lives):
                 
     return player, player_lives
 
-def draw_player_collision(player_rec):
+def draw_player_collision(player_rec,weapon_hitbox):
     global scaling
 
     pr.draw_rectangle_rec(player_rec,collision_color)
+    pr.draw_rectangle_rec(weapon_hitbox,collision_color)
 
 def draw_collectables_collisions(item_list):
     global scaling
@@ -623,10 +626,30 @@ def iframes_countdown(player,iframes_timer):
 
     return iframes_timer, player
 
+def attack_countdown(player,aframes_timer):
+
+    if aframes_timer > 0:
+        aframes_timer -= 1
+    else:
+        print("reached 0")
+        aframes_timer = 0
+
+
+
+    return aframes_timer, player   
+
+def hitbox_calculator(aframes,current_item):
+
+    if aframes != 0 and current_item == Bitflags.Inventory.SWORD: #gives hitbox size only if aframes are active and current item is sword
+        weapon_hitbox = (Hitbox.sword_hitbox["width"],
+                         Hitbox.sword_hitbox["height"])
+    else:
+        weapon_hitbox = (0,0)
+
+    return weapon_hitbox #returns tuple
 
 def defend_shield(iframes_timer,player):
     global PLAYER_IFRAMES
-
 
     if not evaluate(player,Bitflags.State.DEFN):
         
@@ -637,26 +660,40 @@ def defend_shield(iframes_timer,player):
 
     return iframes_timer, player
 
-def attack_sword():
-    pass
+def draw_shield_magic(iframes_timer,player_pos):
+    global scaling
+
+    if iframes_timer != 0:
+        pr.draw_circle_lines(int(player_pos[0]+50),int(player_pos[1]+50),20*scaling,pr.WHITE)
+
+def attack_sword(aframes_timer):
+    global PLAYER_AFRAMES
+
+    aframes_timer = PLAYER_AFRAMES
+
+    return aframes_timer
+
 def attack_wand():
     pass
 
-def use_active_item(current_item,controls,mirror,player,player_lives,iframes_timer):
+def use_active_item(current_item,controls,mirror,player,player_lives,iframes_timer,aframes_timer):
 
     if evaluate(player,Bitflags.State.ATTK) and evaluate(player,current_item):
         match current_item:
             case Bitflags.Inventory.SHIELD:
                 iframes_timer,player = defend_shield(iframes_timer,player)
+
             case Bitflags.Inventory.SWORD:
-                attack_sword()
+                aframes_timer = attack_sword(aframes_timer)
+
             case Bitflags.Inventory.POTION:
                 player_lives = 3
                 deactivate(player,Bitflags.Inventory.POTION)
+
             case Bitflags.Inventory.WAND:
                 attack_wand()
 
-    return player, player_lives, iframes_timer
+    return player, player_lives, iframes_timer, aframes_timer
 
 def select_item(current_item):
 
@@ -712,7 +749,7 @@ async def main():
 
     
     iframes_timer = 0
-
+    aframes_timer = 0
     collectables_list = []
     enemies_list      = [] #not implemented yet hehe!
 
@@ -747,19 +784,25 @@ async def main():
         debug = debug_toggle(debug)
         player_lives = player_take_damage(player_lives)
         iframes_timer, player = iframes_countdown(player,iframes_timer)
+        aframes_timer, player = attack_countdown(player,aframes_timer)
 
         player = check_lives(player_lives,player)
         player_active_item = select_item(player_active_item)
-        player, player_lives, iframes_timer = use_active_item(player_active_item, #activate item, attack or defend 
+        player, player_lives, iframes_timer, aframes_timer = use_active_item(player_active_item, #activate item, attack or defend 
                                                             controls,
                                                             mirror,
                                                             player,
                                                             player_lives,
-                                                            iframes_timer)
+                                                            iframes_timer,
+                                                            aframes_timer)
 
         #EVALUATE IF PLAYER IS DEAD OR NOT. DEATH TITLE MENU PLAYS HERE
         if evaluate(player,Bitflags.State.ALIVE):
             controls, player = player_input(controls,player)
+            player_weapon_hitbox = pr.Rectangle(player_pos[0]+(Hitbox.sword_hitbox["Xoffset"]*mirror),
+                                                player_pos[1]+Hitbox.sword_hitbox["Yoffset"],
+                                                hitbox_calculator(aframes_timer,player_active_item)[0]*scaling,
+                                                hitbox_calculator(aframes_timer,player_active_item)[1]*scaling)
             mirror = mirror_sprite(controls,mirror)
             reset_animation(Animation.wizard_death)
         else:
@@ -809,6 +852,7 @@ async def main():
                     animate_sprite(player_sprite,player_pos[0],player_pos[1],controls,mirror), #calculates current 
                     player_pos[0],                                                             #animation frame     
                     player_pos[1])
+        draw_shield_magic(iframes_timer,player_pos)
         #RENDER ACTIVE ITEM
         draw_active_item(player_active_item,player_pos,controls,mirror,player)
 
@@ -824,7 +868,7 @@ async def main():
 
         #DEBUG INFO
         if debug:
-            draw_player_collision(player_rect)
+            draw_player_collision(player_rect,player_weapon_hitbox)
             draw_collectables_collisions(collectables_list)
             pr.draw_rectangle(debug_window_x,
                                 debug_window_y,
@@ -882,6 +926,11 @@ async def main():
                          debug_window_x,debug_window_y+(debug_margin_text*9),
                          20,
                          pr.RED) 
+            pr.draw_text(f"Attack aframes: {str(aframes_timer)}",
+                         debug_window_x,debug_window_y+(debug_margin_text*10),
+                         20,
+                         pr.RED) 
+
         pr.end_drawing()
         await asyncio.sleep(0)
 
