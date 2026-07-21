@@ -23,7 +23,7 @@ shadow_color = pr.Color(2,2,2,200)
 empty_hud_color = pr.Color(100,100,75,255)
 collision_color = pr.Color(50,50,200,180)
 
-PLAYER_IFRAMES : int = 120
+PLAYER_IFRAMES : int = 60
 
 def web_resizing_test():
     try:
@@ -619,6 +619,7 @@ def iframes_countdown(player,iframes_timer):
         iframes_timer = 0
         if evaluate(player,Bitflags.State.DEFN):
             player = deactivate(player,Bitflags.State.DEFN)
+            player = deactivate(player,Bitflags.State.ATTK)
 
     return iframes_timer, player
 
@@ -626,8 +627,11 @@ def iframes_countdown(player,iframes_timer):
 def defend_shield(iframes_timer,player):
     global PLAYER_IFRAMES
 
+
     if not evaluate(player,Bitflags.State.DEFN):
+        
         iframes_timer = PLAYER_IFRAMES
+        
         player = activate(player,Bitflags.State.DEFN)
 
 
