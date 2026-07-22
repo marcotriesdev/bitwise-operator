@@ -617,17 +617,19 @@ def draw_active_item(current_item,player_position,controls,mirror,player,iframes
                                 0.0,
                                 pr.WHITE)
 
-def iframes_countdown(player,iframes_timer):
+def iframes_countdown(player,iframes_timer,line_thickness):
 
     if iframes_timer > 0:
         iframes_timer -= 1
+        line_thickness -= 0.5
     else:
         iframes_timer = 0
+        line_thickness = 0
         if evaluate(player,Bitflags.State.DEFN):
             player = deactivate(player,Bitflags.State.DEFN)
             player = deactivate(player,Bitflags.State.ATTK)
 
-    return iframes_timer, player
+    return iframes_timer, player, line_thickness
 
 def attack_countdown(player,aframes_timer,line_thickness):
 
@@ -659,17 +661,21 @@ def hitbox_calculator(aframes,current_item):
 
     return weapon_hitbox #returns tuple
 
-def defend_shield(iframes_timer,player):
+def defend_shield(iframes_timer,player,line_thickness):
     global PLAYER_IFRAMES
+    global SWISH_LINE_THICKNESS
 
+
+    line_thickness = SWISH_LINE_THICKNESS
     if not evaluate(player,Bitflags.State.DEFN):
         
         iframes_timer = PLAYER_IFRAMES
         
         player = activate(player,Bitflags.State.DEFN)
+        player = deactivate(player,Bitflags.State.ATTK)
 
 
-    return iframes_timer, player
+    return iframes_timer, player, line_thickness
 
 def attack_sword(aframes_timer,player,line_thickness):
     global PLAYER_AFRAMES
@@ -682,11 +688,18 @@ def attack_sword(aframes_timer,player,line_thickness):
 
     return aframes_timer, player, line_thickness
 
-def draw_shield_magic(iframes_timer,player_pos):
+def draw_shield_magic(iframes_timer,player_pos,line_thickness,player_size):
     global scaling
+    
+    position = (player_pos[0]+ (player_size/2)*scaling,
+                player_pos[1]+ (player_size/2)*scaling)
+    radius1 = 10.0*scaling
+    copy_offset = -2*scaling
+    radius2 = radius1 + copy_offset
 
     if iframes_timer != 0:
-        pr.draw_circle_lines(int(player_pos[0]+50),int(player_pos[1]+50),10*scaling,pr.WHITE)
+        pr.draw_ring(position,radius1,radius1+line_thickness,0.0,360.0,20,pr.WHITE)
+        pr.draw_ring(position,radius2,radius2+line_thickness,0.0,360.0,20,pr.Color(250,250,200,200))
 
 def draw_sword_swish(aframes_timer,hitbox,mirror,line_thickness):
     global scaling
@@ -715,12 +728,12 @@ def draw_sword_swish(aframes_timer,hitbox,mirror,line_thickness):
 def attack_wand():
     pass
 
-def use_active_item(current_item,controls,mirror,player,player_lives,iframes_timer,aframes_timer,line_thickness):
+def use_active_item(current_item,controls,mirror,player,player_lives,iframes_timer,aframes_timer,line_thickness,magic_thickness):
 
     if evaluate(player,Bitflags.State.ATTK) and evaluate(player,current_item):
         match current_item:
             case Bitflags.Inventory.SHIELD:
-                iframes_timer,player = defend_shield(iframes_timer,player)
+                iframes_timer,player,magic_thickness = defend_shield(iframes_timer,player,magic_thickness)
 
             case Bitflags.Inventory.SWORD:
                 aframes_timer,player,line_thickness = attack_sword(aframes_timer,player,line_thickness)
@@ -732,7 +745,7 @@ def use_active_item(current_item,controls,mirror,player,player_lives,iframes_tim
             case Bitflags.Inventory.WAND:
                 attack_wand()
 
-    return player, player_lives, iframes_timer, aframes_timer, line_thickness
+    return player, player_lives, iframes_timer, aframes_timer, line_thickness, magic_thickness
 
 def select_item(current_item):
 
@@ -790,7 +803,8 @@ async def main():
     
     iframes_timer = 0
     aframes_timer = 0
-    current_line_thickness = 0
+    current_swish_thickness = 0
+    current_magic_thickness = 0
 
     collectables_list = []
     enemies_list      = [] #not implemented yet hehe!
@@ -820,26 +834,30 @@ async def main():
 
         #LOGIC
         delta = delta_process(delta)
-        print(current_line_thickness)
+        print(f"swishthick: {current_swish_thickness} magicthick: {current_magic_thickness}")
+        
         floaty_collectibles(collectables_list,delta,0.2)
 
         debug = debug_toggle(debug)
         player_lives = player_take_damage(player_lives)
-        iframes_timer, player = iframes_countdown(player,iframes_timer)
-        aframes_timer, player, current_line_thickness = attack_countdown(player,
-                                                                         aframes_timer,
-                                                                         current_line_thickness)
+        iframes_timer, player,current_magic_thickness = iframes_countdown(player,
+                                                                          iframes_timer,
+                                                                          current_magic_thickness)
+        aframes_timer, player, current_swish_thickness = attack_countdown(player,
+                                                                          aframes_timer,
+                                                                          current_swish_thickness)
 
         player = check_lives(player_lives,player)
         player_active_item = select_item(player_active_item)
-        player, player_lives, iframes_timer, aframes_timer,current_line_thickness = use_active_item(player_active_item, #activate item, attack or defend 
+        player, player_lives, iframes_timer, aframes_timer,current_swish_thickness,current_magic_thickness = use_active_item(player_active_item, #activate item, attack or defend 
                                                             controls,
                                                             mirror,
                                                             player,
                                                             player_lives,
                                                             iframes_timer,
                                                             aframes_timer,
-                                                            current_line_thickness)
+                                                            current_swish_thickness,
+                                                            current_magic_thickness)
 
         #EVALUATE IF PLAYER IS DEAD OR NOT. DEATH TITLE MENU PLAYS HERE
         if evaluate(player,Bitflags.State.ALIVE):
@@ -897,8 +915,10 @@ async def main():
                     animate_sprite(player_sprite,player_pos[0],player_pos[1],controls,mirror), #calculates current 
                     player_pos[0],                                                             #animation frame     
                     player_pos[1])
-        draw_shield_magic(iframes_timer,player_pos)
-        draw_sword_swish(aframes_timer,player_weapon_hitbox,mirror,current_line_thickness)
+
+        draw_shield_magic(iframes_timer,player_pos,current_magic_thickness,player_size)
+        draw_sword_swish(aframes_timer,player_weapon_hitbox,mirror,current_swish_thickness)
+
         #RENDER ACTIVE ITEM
         draw_active_item(player_active_item,player_pos,controls,mirror,player,iframes_timer,aframes_timer)
 
