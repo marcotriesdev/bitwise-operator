@@ -563,7 +563,7 @@ def spawn_bulk_collectables(object_list,*args):
         #                collect enum, object_list, positions     
         spawn_collectable(item_tuple[0],object_list,item_tuple[1])
 
-def draw_active_item(current_item,player_position,controls,mirror,player):
+def draw_active_item(current_item,player_position,controls,mirror,player,iframes,aframes):
     global scaling
     #This is currently not very data driven of me but a mere ducktaped answer to unorganized data.
     sprite = None 
@@ -593,7 +593,7 @@ def draw_active_item(current_item,player_position,controls,mirror,player):
 
     # Draw static item sprite when not attacking
     if sprite != None and evaluate(player,sprite["bitflag"]): # if there's a sprite not empty and player bit has current item 
-        if not evaluate(player,Bitflags.State.ATTK):          # if not attacking
+        if not evaluate(player,Bitflags.State.ATTK) and not aframes:          # if not attacking
             reset_animation(animated_sprite)
             pr.draw_texture_pro(sprite["spritesheet"],
                                 pr.Rectangle(0,0,Animation.item_size*mirror_sprite(controls,mirror),Animation.item_size),
@@ -603,7 +603,7 @@ def draw_active_item(current_item,player_position,controls,mirror,player):
                                 pr.WHITE)
 
         #Animate and draw the item animation       
-        else:
+        elif evaluate(player,Bitflags.State.ATTK) or aframes:
             
             pr.draw_texture_pro(animated_sprite["spritesheet"],
                                 animate_sprite(animated_sprite,
@@ -681,7 +681,18 @@ def draw_shield_magic(iframes_timer,player_pos):
     global scaling
 
     if iframes_timer != 0:
-        pr.draw_circle_lines(int(player_pos[0]+50),int(player_pos[1]+50),20*scaling,pr.WHITE)
+        pr.draw_circle_lines(int(player_pos[0]+50),int(player_pos[1]+50),10*scaling,pr.WHITE)
+
+def draw_sword_swish(aframes_timer,player_pos):
+    global scaling
+
+    p1 = player_pos
+    p2 = player_pos + (2,10)
+    p3 = player_pos + (0,20)
+    points = [p1]
+
+    if aframes_timer != 0:
+        pr.draw_spline_linear(points,3,8.0,pr.WHITE)
 
 def attack_wand():
     pass
@@ -864,8 +875,9 @@ async def main():
                     player_pos[0],                                                             #animation frame     
                     player_pos[1])
         draw_shield_magic(iframes_timer,player_pos)
+        #draw_sword_swish(aframes_timer,player_pos)
         #RENDER ACTIVE ITEM
-        draw_active_item(player_active_item,player_pos,controls,mirror,player)
+        draw_active_item(player_active_item,player_pos,controls,mirror,player,iframes_timer,aframes_timer)
 
         #HUD RENDER duuuh!
         hud_render(player,WIDTH,HEIGHT,font1,game_title,player_lives,player_active_item)
