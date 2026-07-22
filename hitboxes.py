@@ -1,8 +1,13 @@
 from pyray import Rectangle
 from bitflags import Inventory
 
-sword_hitbox = {"height": 8,
-                "width": 16,
+width = 8
+height = 12
+
+
+sword_hitbox = {"width": width,
+                "height": height,
+                "size": (width,height),
                 "bitflag":Inventory.SWORD,
-                "Xoffset": 20,
-                "Yoffset":+5}
+                "Xoffset": 50,
+                "Yoffset":-15}

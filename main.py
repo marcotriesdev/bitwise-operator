@@ -638,6 +638,14 @@ def attack_countdown(player,aframes_timer):
 
     return aframes_timer, player   
 
+def origin_calculator(parent_position, parent_size, child_size): #pushes the value to the center of the square object
+    global scaling
+
+    x = (parent_position[0]+((parent_size*scaling)/2)) - ((child_size[0]*scaling)/2)
+    y = (parent_position[1]+((parent_size*scaling)/2)) - ((child_size[1]*scaling)/2)
+    
+    return x,y
+
 def hitbox_calculator(aframes,current_item):
 
     if aframes != 0 and current_item == Bitflags.Inventory.SWORD: #gives hitbox size only if aframes are active and current item is sword
@@ -724,6 +732,7 @@ async def main():
     debug_margin_text = 35
 
     pr.init_window(WIDTH, HEIGHT, "Bit Wizard")    
+    #pr.set_target_fps(60)
 
     debug = False
     controls = 0b0000   #init controller
@@ -799,8 +808,8 @@ async def main():
         #EVALUATE IF PLAYER IS DEAD OR NOT. DEATH TITLE MENU PLAYS HERE
         if evaluate(player,Bitflags.State.ALIVE):
             controls, player = player_input(controls,player)
-            player_weapon_hitbox = pr.Rectangle(player_pos[0]+(Hitbox.sword_hitbox["Xoffset"]*mirror),
-                                                player_pos[1]+Hitbox.sword_hitbox["Yoffset"],
+            player_weapon_hitbox = pr.Rectangle((origin_calculator(player_pos,player_size,Hitbox.sword_hitbox["size"])[0])+(Hitbox.sword_hitbox["Xoffset"])*mirror,
+                                                (origin_calculator(player_pos,player_size,Hitbox.sword_hitbox["size"])[1])+(Hitbox.sword_hitbox["Yoffset"]*scaling),
                                                 hitbox_calculator(aframes_timer,player_active_item)[0]*scaling,
                                                 hitbox_calculator(aframes_timer,player_active_item)[1]*scaling)
             mirror = mirror_sprite(controls,mirror)
