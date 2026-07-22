@@ -791,10 +791,27 @@ def recover_stamina(stamina,stamina_recover,max_stamina,recovering):
 
     return stamina, recovering
 
-def draw_stamina(stamina,stamina_rect):
+def draw_stamina(stamina,stamina_rect,max_stamina):
     global stamina_bar_color
+    global scaling
 
     stamina_rect.width = stamina
+    sizemultiplier = 1.5
+    xoffset = -10
+    yoffset = -10
+    redwidth   = max_stamina*sizemultiplier
+    redheight  = stamina_rect.height*sizemultiplier
+    red_box = pr.Rectangle(stamina_rect.x+xoffset,
+                           stamina_rect.y+yoffset,
+                           redwidth,
+                           redheight)
+
+    #DRAW RED BOX WHEN STAMINA IS RECOVERING OR IN OTHER WORDS: 0
+    if stamina == 0:
+        pr.draw_rectangle_lines_ex(red_box,0.5*scaling,pr.RED)
+        
+
+    #DRAW STAMINA RECT
     pr.draw_rectangle_rec(stamina_rect,stamina_bar_color)
 
     return stamina_rect
@@ -989,7 +1006,7 @@ async def main():
 
         #HUD RENDER duuuh!
         hud_render(player,WIDTH,HEIGHT,font1,game_title,player_lives,player_active_item)
-        player_stamina_rect = draw_stamina(player_stamina,player_stamina_rect)
+        player_stamina_rect = draw_stamina(player_stamina,player_stamina_rect,max_player_stamina)
         pr.draw_text(f"Press O for debug data", 50, 680, 20, pr.GREEN)
         pr.draw_text(f"WASD OR ARROWS TO MOVE", 50, 70, 20, pr.GREEN)
         pr.draw_text(f"PICKUP STUFF, SELECT WITH SHIFT KEY", 50, 90, 20, pr.GREEN)
