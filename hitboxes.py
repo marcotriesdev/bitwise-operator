@@ -10,4 +10,4 @@ sword_hitbox = {"width": width,
                 "size": (width,height),
                 "bitflag":Inventory.SWORD,
                 "Xoffset": 50,
-                "Yoffset":-15}
+                "Yoffset":-5}

@@ -634,8 +634,6 @@ def attack_countdown(player,aframes_timer):
         print("reached 0")
         aframes_timer = 0
 
-
-
     return aframes_timer, player   
 
 def origin_calculator(parent_position, parent_size, child_size): #pushes the value to the center of the square object
