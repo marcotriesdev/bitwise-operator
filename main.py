@@ -54,22 +54,22 @@ def player_input(controls,player):
 
 
     #PRESS KEYS
-    if          (any(pr.is_key_down(key) for key in Inputs.move_UP) 
+    if         (any(pr.is_key_down(key) for key in Inputs.move_UP) 
         and not any(pr.is_key_down(key2) for key2 in Inputs.move_DOWN)):
         controls |= 1 << Bitflags.Controller.UP
          
 
-    elif            (any(pr.is_key_down(key) for key in Inputs.move_DOWN) 
+    elif       (any(pr.is_key_down(key) for key in Inputs.move_DOWN) 
         and not any(pr.is_key_down(key2) for key2 in Inputs.move_UP)):
         controls |= 1 << Bitflags.Controller.DOWN
       
 
-    if           (any(pr.is_key_down(key) for key in Inputs.move_R) 
+    if         (any(pr.is_key_down(key) for key in Inputs.move_R) 
         and not any(pr.is_key_down(key2) for key2 in Inputs.move_L)):
         controls |= 1 << Bitflags.Controller.RIGHT      
 
 
-    elif        (any(pr.is_key_down(key) for key in Inputs.move_L) 
+    elif       (any(pr.is_key_down(key) for key in Inputs.move_L) 
         and not any(pr.is_key_down(key2) for key2 in Inputs.move_R)):
         controls |= 1 << Bitflags.Controller.LEFT
 
@@ -614,6 +614,7 @@ def draw_active_item(current_item,player_position,controls,mirror,player):
                                 pr.Vector2(0,0),
                                 0.0,
                                 pr.WHITE)
+
 def iframes_countdown(player,iframes_timer):
 
     if iframes_timer > 0:
@@ -633,6 +634,7 @@ def attack_countdown(player,aframes_timer):
     else:
         print("reached 0")
         aframes_timer = 0
+
 
     return aframes_timer, player   
 
@@ -666,18 +668,20 @@ def defend_shield(iframes_timer,player):
 
     return iframes_timer, player
 
+def attack_sword(aframes_timer,player):
+    global PLAYER_AFRAMES
+
+    aframes_timer = PLAYER_AFRAMES
+    if evaluate(player,Bitflags.State.ATTK):
+        player = deactivate(player,Bitflags.State.ATTK)
+
+    return aframes_timer, player
+
 def draw_shield_magic(iframes_timer,player_pos):
     global scaling
 
     if iframes_timer != 0:
         pr.draw_circle_lines(int(player_pos[0]+50),int(player_pos[1]+50),20*scaling,pr.WHITE)
-
-def attack_sword(aframes_timer):
-    global PLAYER_AFRAMES
-
-    aframes_timer = PLAYER_AFRAMES
-
-    return aframes_timer
 
 def attack_wand():
     pass
@@ -690,7 +694,7 @@ def use_active_item(current_item,controls,mirror,player,player_lives,iframes_tim
                 iframes_timer,player = defend_shield(iframes_timer,player)
 
             case Bitflags.Inventory.SWORD:
-                aframes_timer = attack_sword(aframes_timer)
+                aframes_timer,player = attack_sword(aframes_timer,player)
 
             case Bitflags.Inventory.POTION:
                 player_lives = 3
@@ -873,7 +877,7 @@ async def main():
         #DEAD SCREEN
         draw_dead_menu(WIDTH,HEIGHT,font1,dead_title_alpha)
 
-        #DEBUG INFO
+        #DEBUG INFO                 debug          debug           debug
         if debug:
             draw_player_collision(player_rect,player_weapon_hitbox)
             draw_collectables_collisions(collectables_list)
