@@ -24,10 +24,16 @@ shadow_color = pr.Color(2,2,2,200)
 empty_hud_color = pr.Color(100,100,75,255)
 collision_color = pr.Color(50,50,200,180)
 
+stamina_bar_color = pr.Color(100,250,120,255)
+
 PLAYER_IFRAMES : int = 60 #invincibility frames
 PLAYER_AFRAMES : int = 30 #attack frames
 
 SWISH_LINE_THICKNESS : float = 8.0
+
+STAMINA_BAR_SCALE : float = scaling*1.0
+SWORD_STAMINA : float = 0.25
+SHIELD_STAMINA: float = 0.40
 
 def web_resizing_test():
     try:
@@ -661,32 +667,37 @@ def hitbox_calculator(aframes,current_item):
 
     return weapon_hitbox #returns tuple
 
-def defend_shield(iframes_timer,player,line_thickness):
+def defend_shield(iframes_timer,player,line_thickness,stamina,max_stamina):
     global PLAYER_IFRAMES
     global SWISH_LINE_THICKNESS
-
+    global SHIELD_STAMINA
 
     line_thickness = SWISH_LINE_THICKNESS
-    if not evaluate(player,Bitflags.State.DEFN):
+
+    if not evaluate(player,Bitflags.State.DEFN) and stamina != 0:
         
         iframes_timer = PLAYER_IFRAMES
-        
+        stamina -= max_stamina*SHIELD_STAMINA
         player = activate(player,Bitflags.State.DEFN)
         player = deactivate(player,Bitflags.State.ATTK)
 
 
-    return iframes_timer, player, line_thickness
+    return iframes_timer, player, line_thickness, stamina
 
-def attack_sword(aframes_timer,player,line_thickness):
+def attack_sword(aframes_timer,player,line_thickness,stamina,max_stamina):
     global PLAYER_AFRAMES
     global SWISH_LINE_THICKNESS
+    global SWORD_STAMINA
 
-    aframes_timer = PLAYER_AFRAMES
-    line_thickness = SWISH_LINE_THICKNESS
+    if stamina != 0:
+        aframes_timer = PLAYER_AFRAMES
+        line_thickness = SWISH_LINE_THICKNESS
+
     if evaluate(player,Bitflags.State.ATTK):
+        stamina -= max_stamina*SWORD_STAMINA
         player = deactivate(player,Bitflags.State.ATTK)
 
-    return aframes_timer, player, line_thickness
+    return aframes_timer, player, line_thickness,stamina
 
 def draw_shield_magic(iframes_timer,player_pos,line_thickness,player_size):
     global scaling
@@ -728,15 +739,15 @@ def draw_sword_swish(aframes_timer,hitbox,mirror,line_thickness):
 def attack_wand():
     pass
 
-def use_active_item(current_item,controls,mirror,player,player_lives,iframes_timer,aframes_timer,line_thickness,magic_thickness):
+def use_active_item(current_item,controls,mirror,player,player_lives,iframes_timer,aframes_timer,line_thickness,magic_thickness,stamina,max_stamina):
 
     if evaluate(player,Bitflags.State.ATTK) and evaluate(player,current_item):
         match current_item:
             case Bitflags.Inventory.SHIELD:
-                iframes_timer,player,magic_thickness = defend_shield(iframes_timer,player,magic_thickness)
+                iframes_timer,player,magic_thickness,stamina = defend_shield(iframes_timer,player,magic_thickness,stamina,max_stamina)
 
             case Bitflags.Inventory.SWORD:
-                aframes_timer,player,line_thickness = attack_sword(aframes_timer,player,line_thickness)
+                aframes_timer,player,line_thickness,stamina = attack_sword(aframes_timer,player,line_thickness,stamina,max_stamina)
 
             case Bitflags.Inventory.POTION:
                 player_lives = 3
@@ -745,7 +756,7 @@ def use_active_item(current_item,controls,mirror,player,player_lives,iframes_tim
             case Bitflags.Inventory.WAND:
                 attack_wand()
 
-    return player, player_lives, iframes_timer, aframes_timer, line_thickness, magic_thickness
+    return player, player_lives, iframes_timer, aframes_timer, line_thickness, magic_thickness,stamina
 
 def select_item(current_item):
 
@@ -757,6 +768,36 @@ def select_item(current_item):
 
     return current_item
 
+def _recover_stamina_timer(timer,recovering):
+
+    if timer > 0 and recovering:
+        timer -= 1
+    else:
+        timer = 120
+        recovering = False
+
+    return timer,recovering
+
+def recover_stamina(stamina,stamina_recover,max_stamina,recovering):
+    
+    if stamina < max_stamina + 1 and not recovering:
+        stamina += stamina_recover
+    
+    if stamina < 0:
+        stamina = 0
+
+    if stamina == 0:
+        recovering = True
+
+    return stamina, recovering
+
+def draw_stamina(stamina,stamina_rect):
+    global stamina_bar_color
+
+    stamina_rect.width = stamina
+    pr.draw_rectangle_rec(stamina_rect,stamina_bar_color)
+
+    return stamina_rect
 
 async def main():
 
@@ -770,6 +811,7 @@ async def main():
 
     global scaling
     global bgscaling
+    global STAMINA_BAR_SCALE
 
     debug_window_x = 30
     debug_window_y = 60
@@ -787,6 +829,11 @@ async def main():
 
     player_lives = 2
     player_max_lives = 3
+    max_player_stamina = 100
+    player_stamina = max_player_stamina
+    player_stamina_recover = 0.3
+    recovering_stamina = False
+    recovering_timer = 180
     player_active_item = Bitflags.Inventory.EMPTY
     player_speed = 2.5
     player_pos = (250,250)
@@ -795,12 +842,13 @@ async def main():
                                player_pos[1],
                                player_size*scaling,
                                player_size*scaling)
+    player_stamina_rect = pr.Rectangle((WIDTH/3)*2,HEIGHT/5,player_stamina*STAMINA_BAR_SCALE,5*scaling)
+
     player_weapon_hitbox = pr.Rectangle(player_pos[0],
                                         player_pos[1],
                                         0,
                                         0)
 
-    
     iframes_timer = 0
     aframes_timer = 0
     current_swish_thickness = 0
@@ -834,8 +882,8 @@ async def main():
 
         #LOGIC
         delta = delta_process(delta)
-        print(f"swishthick: {current_swish_thickness} magicthick: {current_magic_thickness}")
-        
+        #print(f"swishthick: {current_swish_thickness} magicthick: {current_magic_thickness}")
+        print(f"maxsta: {max_player_stamina} currentstam {int(player_stamina)} recovertimer {recovering_timer}")
         floaty_collectibles(collectables_list,delta,0.2)
 
         debug = debug_toggle(debug)
@@ -849,7 +897,14 @@ async def main():
 
         player = check_lives(player_lives,player)
         player_active_item = select_item(player_active_item)
-        player, player_lives, iframes_timer, aframes_timer,current_swish_thickness,current_magic_thickness = use_active_item(player_active_item, #activate item, attack or defend 
+
+        (player, 
+        player_lives, 
+        iframes_timer, 
+        aframes_timer,
+        current_swish_thickness,
+        current_magic_thickness,
+        player_stamina) = use_active_item(player_active_item, #activate item, attack or defend 
                                                             controls,
                                                             mirror,
                                                             player,
@@ -857,11 +912,21 @@ async def main():
                                                             iframes_timer,
                                                             aframes_timer,
                                                             current_swish_thickness,
-                                                            current_magic_thickness)
+                                                            current_magic_thickness,
+                                                            player_stamina,
+                                                            max_player_stamina)
 
         #EVALUATE IF PLAYER IS DEAD OR NOT. DEATH TITLE MENU PLAYS HERE
         if evaluate(player,Bitflags.State.ALIVE):
             controls, player = player_input(controls,player) #Check origin calculator function to figure out what the hell is happening below ↓↓↓:
+            player_stamina,recovering_stamina = recover_stamina(player_stamina, 
+                                                                player_stamina_recover,
+                                                                max_player_stamina,
+                                                                recovering_stamina)
+
+            recovering_timer,recovering_stamina = _recover_stamina_timer(recovering_timer, 
+                                                                         recovering_stamina)
+
             player_weapon_hitbox = pr.Rectangle((origin_calculator(player_pos,player_size,Hitbox.sword_hitbox["size"])[0])+(Hitbox.sword_hitbox["Xoffset"])*mirror,
                                                 (origin_calculator(player_pos,player_size,Hitbox.sword_hitbox["size"])[1])+(Hitbox.sword_hitbox["Yoffset"]*scaling),
                                                 hitbox_calculator(aframes_timer,player_active_item)[0]*scaling,
@@ -924,6 +989,7 @@ async def main():
 
         #HUD RENDER duuuh!
         hud_render(player,WIDTH,HEIGHT,font1,game_title,player_lives,player_active_item)
+        player_stamina_rect = draw_stamina(player_stamina,player_stamina_rect)
         pr.draw_text(f"Press O for debug data", 50, 680, 20, pr.GREEN)
         pr.draw_text(f"WASD OR ARROWS TO MOVE", 50, 70, 20, pr.GREEN)
         pr.draw_text(f"PICKUP STUFF, SELECT WITH SHIFT KEY", 50, 90, 20, pr.GREEN)
