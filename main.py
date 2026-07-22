@@ -807,7 +807,7 @@ async def main():
 
         #EVALUATE IF PLAYER IS DEAD OR NOT. DEATH TITLE MENU PLAYS HERE
         if evaluate(player,Bitflags.State.ALIVE):
-            controls, player = player_input(controls,player)
+            controls, player = player_input(controls,player) #Check origin calculator function to figure out what the hell is happening below ↓↓↓:
             player_weapon_hitbox = pr.Rectangle((origin_calculator(player_pos,player_size,Hitbox.sword_hitbox["size"])[0])+(Hitbox.sword_hitbox["Xoffset"])*mirror,
                                                 (origin_calculator(player_pos,player_size,Hitbox.sword_hitbox["size"])[1])+(Hitbox.sword_hitbox["Yoffset"]*scaling),
                                                 hitbox_calculator(aframes_timer,player_active_item)[0]*scaling,
