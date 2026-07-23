@@ -24,14 +24,18 @@ shadow_color = pr.Color(2,2,2,200)
 empty_hud_color = pr.Color(100,100,75,255)
 collision_color = pr.Color(50,50,200,180)
 
+potion_magic_color = pr.Color(10,255,10,205)
+potion_magic_shine = pr.Color(150,255,150,155)
+
 stamina_bar_color = pr.Color(100,250,120,255)
 
 PLAYER_IFRAMES : int = 60 #invincibility frames
 PLAYER_AFRAMES : int = 30 #attack frames
+PLAYER_PFRAMES : int = 120 #potion recovering frames
 
 SWISH_LINE_THICKNESS : float = 8.0
 
-STAMINA_BAR_SCALE : float = scaling*1.0
+STAMINA_BAR_SCALE : float = scaling*0.4
 SWORD_STAMINA : float = 0.25
 SHIELD_STAMINA: float = 0.40
 
@@ -560,7 +564,7 @@ def revive_player(player,player_lives,title_alpha):
     return player, player_lives, title_alpha
 
 def check_lives(player_lives,player):
-    if not player_lives:
+    if player_lives < 0:
         player = deactivate(player,Bitflags.State.ALIVE)
 
     return player
@@ -571,7 +575,7 @@ def spawn_bulk_collectables(object_list,*args):
         #                collect enum, object_list, positions     
         spawn_collectable(item_tuple[0],object_list,item_tuple[1])
 
-def draw_active_item(current_item,player_position,controls,mirror,player,iframes,aframes):
+def draw_active_item(current_item,player_position,controls,mirror,player,iframes,aframes,pframes):
     global scaling
     #This is currently not very data driven of me but a mere ducktaped answer to unorganized data.
     sprite = None 
@@ -601,7 +605,7 @@ def draw_active_item(current_item,player_position,controls,mirror,player,iframes
 
     # Draw static item sprite when not attacking
     if sprite != None and evaluate(player,sprite["bitflag"]): # if there's a sprite not empty and player bit has current item 
-        if not evaluate(player,Bitflags.State.ATTK) and not aframes:          # if not attacking
+        if not evaluate(player,Bitflags.State.ATTK) and not aframes and not iframes and not pframes:          # if not attacking
             reset_animation(animated_sprite)
             pr.draw_texture_pro(sprite["spritesheet"],
                                 pr.Rectangle(0,0,Animation.item_size*mirror_sprite(controls,mirror),Animation.item_size),
@@ -611,7 +615,7 @@ def draw_active_item(current_item,player_position,controls,mirror,player,iframes
                                 pr.WHITE)
 
         #Animate and draw the item animation       
-        elif evaluate(player,Bitflags.State.ATTK) or aframes:
+        elif evaluate(player,Bitflags.State.ATTK) or aframes or iframes or pframes:
             
             pr.draw_texture_pro(animated_sprite["spritesheet"],
                                 animate_sprite(animated_sprite,
@@ -648,6 +652,22 @@ def attack_countdown(player,aframes_timer,line_thickness):
 
 
     return aframes_timer, player , line_thickness  
+
+def potion_countdown(player,pframes_timer,line_thickness,recover_now):
+
+    if pframes_timer > 1:
+        pframes_timer -= 1
+        line_thickness -= 0.05
+    elif pframes_timer == 1:
+        recover_now = True
+        pframes_timer -= 1
+        line_thickness -= 0.05    
+    else:
+        recover_now = False
+        pframes_timer = 0
+        line_thickness = 0
+
+    return pframes_timer, player, line_thickness,recover_now
 
 def origin_calculator(parent_position, parent_size, child_size): #pushes the value to the center of the square object
     global scaling
@@ -699,18 +719,41 @@ def attack_sword(aframes_timer,player,line_thickness,stamina,max_stamina):
 
     return aframes_timer, player, line_thickness,stamina
 
+def drink_potion(pframes_timer,line_thickness,player):
+    global PLAYER_PFRAMES
+    global SWISH_LINE_THICKNESS
+
+    pframes_timer = PLAYER_PFRAMES
+    line_thickness = SWISH_LINE_THICKNESS*0.8
+
+    if evaluate(player,Bitflags.State.ATTK):
+        player = deactivate(player,Bitflags.State.ATTK)
+
+    return pframes_timer,line_thickness,player
+
+def recover_lives(player,player_lives,amount,recover_now):
+
+    if recover_now:
+        print("RECOVERY")
+        player_lives = amount
+        if evaluate(player,Bitflags.Inventory.POTION):
+            #pass
+            player = deactivate(player,Bitflags.Inventory.POTION)
+
+    return player, player_lives
+
 def draw_shield_magic(iframes_timer,player_pos,line_thickness,player_size):
     global scaling
     
     position = (player_pos[0]+ (player_size/2)*scaling,
                 player_pos[1]+ (player_size/2)*scaling)
-    radius1 = 10.0*scaling
-    copy_offset = -2*scaling
+    radius1 = 12.0*scaling
+    copy_offset = 1*scaling
     radius2 = radius1 + copy_offset
 
     if iframes_timer != 0:
         pr.draw_ring(position,radius1,radius1+line_thickness,0.0,360.0,20,pr.WHITE)
-        pr.draw_ring(position,radius2,radius2+line_thickness,0.0,360.0,20,pr.Color(250,250,200,200))
+        pr.draw_ring(position,radius2,radius2+line_thickness*1.5,0.0,360.0,20,pr.Color(250,250,200,150))
 
 def draw_sword_swish(aframes_timer,hitbox,mirror,line_thickness):
     global scaling
@@ -736,10 +779,58 @@ def draw_sword_swish(aframes_timer,hitbox,mirror,line_thickness):
         pr.draw_spline_catmull_rom(points,len(points),line_thickness,pr.WHITE)
         pr.draw_spline_catmull_rom(points2,len(points),line_thickness*5.0,pr.Color(250,250,200,200))
 
+def draw_potion_magic(pframes_timer,player_pos,line_thickness,player_size):
+    global scaling
+    global potion_magic_color
+    global potion_magic_shine
+
+    center = (player_pos[0]+ (player_size/2)*scaling,
+                player_pos[1]+ (player_size/2)*scaling)
+
+    #VERTICAL SIZE OF THE LINE                
+    sizes = [25,45,70,45,25]
+    #SPACING FROM THE CENTER
+    space = [35,22,0,22,35]
+
+    shine_multiplier = 2.8
+
+    leftpos = pr.Vector2(center[0]-space[0],(center[1]-sizes[0]))
+    leftoffset = pr.Vector2(0,              (2*sizes[0]))
+
+    centerpos1 = pr.Vector2(center[0]-space[1],(center[1]-sizes[1]))
+    center1offset = pr.Vector2(0,            2*sizes[1])
+
+    centerpos2 = pr.Vector2(center[0]+space[2],(center[1]-sizes[2]))
+    center2offset = pr.Vector2(0,            (2*sizes[2]))
+
+    centerpos3 = pr.Vector2(center[0]+space[3],(center[1]-sizes[3]))
+    center3offset = pr.Vector2(0,           ( 2*sizes[3]))
+
+    rightpos = pr.Vector2(center[0]+space[4],(center[1]-sizes[4]))
+    rightoffset = pr.Vector2(0,            (2*sizes[4]))
+
+    if pframes_timer != 0:
+        print(f"vector: {(pr.vector2_add(centerpos1, center1offset)).y}")
+        #1st magic line, 2nd shine fatter line
+        pr.draw_line_ex(leftpos,pr.vector2_add(leftpos,leftoffset),line_thickness,potion_magic_color)
+        pr.draw_line_ex(leftpos,pr.vector2_add(leftpos,leftoffset),line_thickness*shine_multiplier,potion_magic_shine)
+
+        pr.draw_line_ex(centerpos1,pr.vector2_add(centerpos1,center1offset),line_thickness,potion_magic_color)
+        pr.draw_line_ex(centerpos1,pr.vector2_add(centerpos1,center1offset),line_thickness*shine_multiplier,potion_magic_shine)
+
+        pr.draw_line_ex(centerpos2,pr.vector2_add(centerpos2,center2offset),line_thickness,potion_magic_color)
+        pr.draw_line_ex(centerpos2,pr.vector2_add(centerpos2,center2offset),line_thickness*shine_multiplier,potion_magic_shine)
+
+        pr.draw_line_ex(centerpos3,pr.vector2_add(centerpos3,center3offset),line_thickness,potion_magic_color)
+        pr.draw_line_ex(centerpos3,pr.vector2_add(centerpos3,center3offset),line_thickness*shine_multiplier,potion_magic_shine)
+
+        pr.draw_line_ex(rightpos,pr.vector2_add(rightpos,rightoffset),line_thickness,potion_magic_color)
+        pr.draw_line_ex(rightpos,pr.vector2_add(rightpos,rightoffset),line_thickness*shine_multiplier,potion_magic_shine)
+
 def attack_wand():
     pass
 
-def use_active_item(current_item,controls,mirror,player,player_lives,iframes_timer,aframes_timer,line_thickness,magic_thickness,stamina,max_stamina):
+def use_active_item(current_item,player,player_lives,iframes_timer,aframes_timer,line_thickness,magic_thickness,stamina,max_stamina,pframes_timer,potion_thickness,recover_now):
 
     if evaluate(player,Bitflags.State.ATTK) and evaluate(player,current_item):
         match current_item:
@@ -750,13 +841,13 @@ def use_active_item(current_item,controls,mirror,player,player_lives,iframes_tim
                 aframes_timer,player,line_thickness,stamina = attack_sword(aframes_timer,player,line_thickness,stamina,max_stamina)
 
             case Bitflags.Inventory.POTION:
-                player_lives = 3
-                deactivate(player,Bitflags.Inventory.POTION)
+                
+                pframes_timer, potion_thickness, player = drink_potion(pframes_timer,potion_thickness,player)
 
             case Bitflags.Inventory.WAND:
                 attack_wand()
 
-    return player, player_lives, iframes_timer, aframes_timer, line_thickness, magic_thickness,stamina
+    return player, player_lives, iframes_timer, aframes_timer, line_thickness, magic_thickness, stamina, pframes_timer, potion_thickness
 
 def select_item(current_item):
 
@@ -794,13 +885,15 @@ def recover_stamina(stamina,stamina_recover,max_stamina,recovering):
 def draw_stamina(stamina,stamina_rect,max_stamina):
     global stamina_bar_color
     global scaling
+    global STAMINA_BAR_SCALE
 
-    stamina_rect.width = stamina
-    sizemultiplier = 1.5
+    
+    sizemult = STAMINA_BAR_SCALE
     xoffset = -10
     yoffset = -10
-    redwidth   = max_stamina*sizemultiplier
-    redheight  = stamina_rect.height*sizemultiplier
+    stamina_rect.width = stamina*sizemult
+    redwidth   = max_stamina*sizemult
+    redheight  = stamina_rect.height*sizemult
     red_box = pr.Rectangle(stamina_rect.x+xoffset,
                            stamina_rect.y+yoffset,
                            redwidth,
@@ -846,6 +939,7 @@ async def main():
 
     player_lives = 2
     player_max_lives = 3
+    recovering_lives = False
     max_player_stamina = 100
     player_stamina = max_player_stamina
     player_stamina_recover = 0.3
@@ -859,7 +953,10 @@ async def main():
                                player_pos[1],
                                player_size*scaling,
                                player_size*scaling)
-    player_stamina_rect = pr.Rectangle((WIDTH/3)*2,HEIGHT/5,player_stamina*STAMINA_BAR_SCALE,5*scaling)
+    player_stamina_rect = pr.Rectangle(((WIDTH/3)*2)-50,
+                                         (HEIGHT/5)-30,
+                                         player_stamina*STAMINA_BAR_SCALE,
+                                         5*scaling)
 
     player_weapon_hitbox = pr.Rectangle(player_pos[0],
                                         player_pos[1],
@@ -868,8 +965,10 @@ async def main():
 
     iframes_timer = 0
     aframes_timer = 0
+    pframes_timer = 0
     current_swish_thickness = 0
     current_magic_thickness = 0
+    current_potion_thickness= 0
 
     collectables_list = []
     enemies_list      = [] #not implemented yet hehe!
@@ -900,7 +999,9 @@ async def main():
         #LOGIC
         delta = delta_process(delta)
         #print(f"swishthick: {current_swish_thickness} magicthick: {current_magic_thickness}")
-        print(f"maxsta: {max_player_stamina} currentstam {int(player_stamina)} recovertimer {recovering_timer}")
+        #print(f"maxsta: {max_player_stamina} currentstam {int(player_stamina)} recovertimer {recovering_timer}")
+        #print(f"recovering: {recovering_lives} current: {player_lives}")
+
         floaty_collectibles(collectables_list,delta,0.2)
 
         debug = debug_toggle(debug)
@@ -911,9 +1012,14 @@ async def main():
         aframes_timer, player, current_swish_thickness = attack_countdown(player,
                                                                           aframes_timer,
                                                                           current_swish_thickness)
+        pframes_timer,player,current_potion_thickness,recovering_lives =  potion_countdown(player,
+                                                                                           pframes_timer,
+                                                                                           current_potion_thickness,
+                                                                                           recovering_lives)                                                                        
 
         player = check_lives(player_lives,player)
         player_active_item = select_item(player_active_item)
+        player, player_lives = recover_lives(player,player_lives,3,recovering_lives)
 
         (player, 
         player_lives, 
@@ -921,9 +1027,9 @@ async def main():
         aframes_timer,
         current_swish_thickness,
         current_magic_thickness,
-        player_stamina) = use_active_item(player_active_item, #activate item, attack or defend 
-                                                            controls,
-                                                            mirror,
+        player_stamina,
+        pframes_timer,
+        current_potion_thickness) = use_active_item(player_active_item, #activate item, attack or defend 
                                                             player,
                                                             player_lives,
                                                             iframes_timer,
@@ -931,7 +1037,10 @@ async def main():
                                                             current_swish_thickness,
                                                             current_magic_thickness,
                                                             player_stamina,
-                                                            max_player_stamina)
+                                                            max_player_stamina,
+                                                            pframes_timer,
+                                                            current_potion_thickness,
+                                                            recovering_lives)
 
         #EVALUATE IF PLAYER IS DEAD OR NOT. DEATH TITLE MENU PLAYS HERE
         if evaluate(player,Bitflags.State.ALIVE):
@@ -991,18 +1100,23 @@ async def main():
         #RENDER COLLECTABLES
         draw_collectables(collectables_list)
 
+        #RENDER POTION RECOVERY FX BEHIIND THE PLAYER
+        draw_potion_magic(pframes_timer,player_pos,current_potion_thickness,player_size)
+
         #RENDER PLAYER
-        
         draw_sprite(player_sprite["spritesheet"],
                     animate_sprite(player_sprite,player_pos[0],player_pos[1],controls,mirror), #calculates current 
                     player_pos[0],                                                             #animation frame     
                     player_pos[1])
 
+
+        #RENDER SHIELD AND SWORD FX
         draw_shield_magic(iframes_timer,player_pos,current_magic_thickness,player_size)
         draw_sword_swish(aframes_timer,player_weapon_hitbox,mirror,current_swish_thickness)
 
         #RENDER ACTIVE ITEM
-        draw_active_item(player_active_item,player_pos,controls,mirror,player,iframes_timer,aframes_timer)
+        if evaluate(player,Bitflags.State.ALIVE):
+            draw_active_item(player_active_item,player_pos,controls,mirror,player,iframes_timer,aframes_timer,pframes_timer)
 
         #HUD RENDER duuuh!
         hud_render(player,WIDTH,HEIGHT,font1,game_title,player_lives,player_active_item)
