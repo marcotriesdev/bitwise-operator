@@ -20,6 +20,17 @@ bgscaling = scaling * 0.7
 item_scaling = scaling * 0.7
 pr.VIOLET = pr.Color(240,180,220,255)
 
+frame_color = pr.Color(150,140,100,255)
+frame_color_bright = pr.Color(180,170,110,255)
+frame_color_dark = pr.Color(75,70,50,255)
+
+empty_stamina_color1 = pr.Color(25,20,10,255)
+empty_stamina_color2 = pr.Color(65,60,50,255)
+
+title_color = pr.Color(120,110,70,255)
+title_color_bright = pr.Color(170,160,120,255)
+title_color_dark = pr.Color(90,80,60,255)
+
 shadow_color = pr.Color(2,2,2,200)
 empty_hud_color = pr.Color(100,100,75,255)
 collision_color = pr.Color(50,50,200,180)
@@ -345,6 +356,13 @@ def floaty_collectibles(item_list,delta,intensity):
 
 def hud_render(player,screen_width,screen_height,font,game_title,hearts,current_item):
     global hud_scaling
+    global frame_color
+    global frame_color_bright
+    global frame_color_dark
+    global title_color 
+    global title_color_bright
+    global title_color_dark
+
 
     hud_locX = screen_width*0.38
     hud_locY = 20
@@ -356,15 +374,6 @@ def hud_render(player,screen_width,screen_height,font,game_title,hearts,current_
     heart_frame_y = hud_locY
     
     frame_thick = 8
-    frame_color = pr.Color(150,140,100,255)
-    frame_color_bright = pr.Color(180,170,110,255)
-    frame_color_dark = pr.Color(75,70,50,255)
-
-    title_color = pr.Color(120,110,70,255)
-    title_color_bright = pr.Color(170,160,120,255)
-    title_color_dark = pr.Color(90,80,60,255)
-
-
 
     title_locX = frame_thick+60
     title_locY = frame_thick
@@ -887,6 +896,16 @@ def draw_stamina(stamina,stamina_rect,max_stamina):
     global scaling
     global STAMINA_BAR_SCALE
 
+    global frame_color
+    global frame_color_bright
+    global frame_color_dark
+    global title_color 
+    global title_color_bright
+    global title_color_dark
+
+    global empty_stamina_color1
+    global empty_stamina_color2
+
     
     sizemult = STAMINA_BAR_SCALE
     xoffset = -10
@@ -896,8 +915,22 @@ def draw_stamina(stamina,stamina_rect,max_stamina):
     redheight  = stamina_rect.height*sizemult
     red_box = pr.Rectangle(stamina_rect.x+xoffset,
                            stamina_rect.y+yoffset,
-                           redwidth,
-                           redheight)
+                           redwidth+20,
+                           redheight+20)
+
+    empty_stamina = pr.Rectangle(stamina_rect.x,stamina_rect.y,max_stamina*sizemult,stamina_rect.height)
+    hud_box = pr.Rectangle(red_box.x-2,red_box.y-3,redwidth+25,redheight+8)
+    hud_box2 = pr.Rectangle(hud_box.x-5,hud_box.y,hud_box.width+10,hud_box.height+5)
+    #STAMINA HUD
+    pr.draw_rectangle_rec(hud_box2,frame_color_dark)
+    pr.draw_rectangle_rec(hud_box,frame_color)
+
+    pr.draw_rectangle_gradient_v(int(empty_stamina.x),    
+                                 int(empty_stamina.y),
+                                 int(empty_stamina.width),
+                                 int(empty_stamina.height),
+                                 empty_stamina_color1,
+                                 empty_stamina_color2)
 
     #DRAW RED BOX WHEN STAMINA IS RECOVERING OR IN OTHER WORDS: 0
     if stamina == 0:
@@ -956,7 +989,7 @@ async def main():
     player_stamina_rect = pr.Rectangle(((WIDTH/3)*2)-50,
                                          (HEIGHT/5)-30,
                                          player_stamina*STAMINA_BAR_SCALE,
-                                         5*scaling)
+                                         3*scaling)
 
     player_weapon_hitbox = pr.Rectangle(player_pos[0],
                                         player_pos[1],
